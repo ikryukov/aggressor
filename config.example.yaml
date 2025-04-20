@@ -1,0 +1,64 @@
+repo_url: "https://github.com/openucx/ucc.git"
+work_dir: "/tmp/hpc-perf-monitor"
+ref_commit: "master"
+test_commits:
+  - "HEAD~1"
+  - "HEAD"
+
+build:
+  source_dir: "/tmp/hpc-perf-monitor/source"
+  build_dir: "/tmp/hpc-perf-monitor/build"
+  configure_flags:
+    - "--enable-debug"
+    - "--with-cuda=/usr/local/cuda"
+  make_flags:
+    - "-j8"
+  env_vars:
+    CC: "gcc"
+    CXX: "g++"
+
+benchmarks:
+  - name: "ucc_perftest_allreduce"
+    command: "ucc_perftest allreduce"
+    params:
+      num_processes: [2, 4, 8, 16]
+      procs_per_node: [1, 2, 4]
+      msg_sizes: [8, 1024, 65536, 1048576]
+      memory_types: ["host", "cuda"]
+    parser: "ucc_perftest"
+    metrics: ["latency", "bandwidth"]
+    slurm:
+      partition: "gpu"
+      time_limit: "00:30:00"
+      account: "hpc_project"
+      qos: "normal"
+      additional_flags:
+        gres: "gpu:1"
+        constraint: "v100"
+
+  - name: "osu_alltoall"
+    command: "osu_alltoall"
+    params:
+      num_processes: [2, 4, 8]
+      procs_per_node: [1, 2]
+      msg_sizes: [1, 1024, 65536]
+      memory_types: ["host"]
+    parser: "osu_bench"
+    metrics: ["latency"]
+    slurm:
+      partition: "compute"
+      time_limit: "00:15:00"
+      account: "hpc_project"
+      qos: "normal"
+
+regression:
+  threshold_pct: 5.0
+  min_runs: 3
+  metrics_weight:
+    latency: 1.0
+    bandwidth: 1.0
+
+report_formats:
+  - "markdown"
+  - "html"
+  - "json" 

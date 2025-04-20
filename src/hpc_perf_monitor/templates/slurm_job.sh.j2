@@ -1,0 +1,25 @@
+#!/bin/bash
+#SBATCH --partition={{ partition }}
+#SBATCH --time={{ time_limit }}
+#SBATCH --nodes={{ num_nodes }}
+{% if account %}
+#SBATCH --account={{ account }}
+{% endif %}
+{% if qos %}
+#SBATCH --qos={{ qos }}
+{% endif %}
+{% for flag, value in additional_flags.items() %}
+#SBATCH --{{ flag }}={{ value }}
+{% endfor %}
+
+# Load any required modules
+module purge
+module load openmpi
+
+# Set any environment variables
+export OMPI_MCA_btl=^openib
+export UCX_TLS=rc,sm,self
+export UCX_NET_DEVICES=mlx5_0:1
+
+# Run the benchmark
+{{ mpi_cmd }} 
