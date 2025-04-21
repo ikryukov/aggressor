@@ -134,56 +134,78 @@ class GitManager:
         finally:
             shutil.rmtree(temp_dir, ignore_errors=True)
 
-    async def get_commits_between(self, start: str, end: str) -> Dict[str, CommitInfo]:
-        """Get detailed information about commits between two points.
+    async def get_commits_between(self, good_commit: str, bad_commit: str) -> List[CommitInfo]:
+        """Get list of commits between two commits in chronological order.
 
         Args:
-            start: Starting commit reference (hash, branch, tag, etc.)
-            end: Ending commit reference (hash, branch, tag, etc.)
+            good_commit: Known good commit hash or reference
+            bad_commit: Known bad commit hash or reference
 
         Returns:
-            Dictionary mapping commit hashes to CommitInfo objects
-
-        Raises:
-            GitCommandError: If Git operations fail
+            List of CommitInfo objects for commits between good and bad commits, in chronological order
         """
-        temp_dir = self.work_dir / "temp_range"
+        temp_dir = self.work_dir / "temp_bisect"
         if temp_dir.exists():
             shutil.rmtree(temp_dir)
-
+            
         try:
             repo = Repo.clone_from(self.repo_url, temp_dir)
             
-            try:
-                # Resolve references to full commit objects
-                start_commit = repo.commit(start)
-                end_commit = repo.commit(end)
-                
-                # Use the resolved commits with ^ to include the start commit
-                commit_range = f"{start_commit.hexsha}^..{end_commit.hexsha}"
-                commits = list(repo.iter_commits(commit_range))
-            except GitCommandError as e:
-                raise ValueError(f"Invalid commit references. Error: {str(e)}")
+            # Resolve commit references
+            good_commit_obj = repo.commit(good_commit)
+            bad_commit_obj = repo.commit(bad_commit)
             
-            # Create dictionary of commit info
-            commit_info_dict = {}
-            for commit_obj in reversed(commits):
+            # Determine which commit is older
+            if good_commit_obj.committed_date > bad_commit_obj.committed_date:
+                # Good commit is newer, so we want commits from bad to good
+                commit_range = f"{bad_commit_obj.hexsha}..{good_commit_obj.hexsha}"
+            else:
+                # Bad commit is newer, so we want commits from good to bad
+                commit_range = f"{good_commit_obj.hexsha}..{bad_commit_obj.hexsha}"
+            
+            # Get commits in the range
+            commits = list(repo.iter_commits(commit_range))
+            
+            # Convert to CommitInfo objects in chronological order
+            commit_info_list = []
+            for commit in reversed(commits):
                 info = CommitInfo(
-                    hash=commit_obj.hexsha,
-                    short_hash=commit_obj.hexsha[:8],
-                    author=commit_obj.author.name,
-                    author_email=commit_obj.author.email,
-                    date=datetime.fromtimestamp(commit_obj.committed_date),
-                    message=commit_obj.message.strip()
+                    hash=commit.hexsha,
+                    short_hash=commit.hexsha[:8],
+                    author=commit.author.name,
+                    author_email=commit.author.email,
+                    date=datetime.fromtimestamp(commit.committed_date),
+                    message=commit.message.strip()
                 )
-                commit_info_dict[commit_obj.hexsha] = info
-                
-            return commit_info_dict
-
+                commit_info_list.append(info)
+            
+            return commit_info_list
+            
         except GitCommandError as e:
-            raise GitCommandError(f"Failed to get commits between {start} and {end}", 
-                                e.status, e.stderr)
+            raise RuntimeError(f"Failed to get commits between {good_commit} and {bad_commit}: {str(e)}")
+        finally:
+            shutil.rmtree(temp_dir, ignore_errors=True)
 
+    async def _get_commit_date(self, commit_hash: str) -> datetime:
+        """Get commit date.
+
+        Args:
+            commit_hash: Commit hash
+
+        Returns:
+            Commit date as datetime object
+        """
+        temp_dir = self.work_dir / "temp_date_resolve"
+        if temp_dir.exists():
+            shutil.rmtree(temp_dir)
+            
+        try:
+            repo = Repo.clone_from(self.repo_url, temp_dir)
+            try:
+                commit = repo.commit(commit_hash)
+                return datetime.fromtimestamp(commit.committed_date)
+            except GitCommandError as e:
+                raise RuntimeError(f"Failed to get commit date for {commit_hash}: {str(e)}")
         finally:
             shutil.rmtree(temp_dir, ignore_errors=True)
 
@@ -293,4 +315,30 @@ class GitManager:
     async def cleanup(self) -> None:
         """Clean up temporary directories."""
         if self.work_dir.exists():
-            shutil.rmtree(self.work_dir, ignore_errors=True) 
+            shutil.rmtree(self.work_dir, ignore_errors=True)
+
+    async def _get_commit_hash(self, commit_ref: str) -> str:
+        """Get full commit hash for a reference.
+
+        Args:
+            commit_ref: Commit reference (hash, branch, tag, etc.)
+
+        Returns:
+            Full commit hash
+
+        Raises:
+            RuntimeError: If commit reference is invalid
+        """
+        temp_dir = self.work_dir / "temp_hash_resolve"
+        if temp_dir.exists():
+            shutil.rmtree(temp_dir)
+            
+        try:
+            repo = Repo.clone_from(self.repo_url, temp_dir)
+            try:
+                commit = repo.commit(commit_ref)
+                return commit.hexsha
+            except GitCommandError as e:
+                raise RuntimeError(f"Failed to resolve commit reference {commit_ref}: {str(e)}")
+        finally:
+            shutil.rmtree(temp_dir, ignore_errors=True) 
