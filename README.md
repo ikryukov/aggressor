@@ -117,17 +117,32 @@ build:
     - "--with-cuda=/usr/local/cuda"
   # ... more settings ...
 
+  - name: "osu_bcast"
+    type: "osu"
+    benchmark_dir: "/home/ilya/work/hpcx/ompi/tests/osu-micro-benchmarks/"
+    command: "osu_bcast -i 100000 --full"
+    params:
+      num_processes: [2]
+      procs_per_node: [1]
+      memory_types: ["host"]
+    parser: "osu_bench"
+    metrics: ["latency_max"] # important metrics
+
 report_formats:
   - "markdown"
   - "html"
-  - "json"
 ```
 
 ## Usage
 
 Run the performance analysis:
 ```bash
-python -m hpc_perf_monitor config.yaml
+python -m hpc_perf_monitor run-analysis ./config.yaml
+```
+
+Run the regression analysis:
+```bash
+python -m hpc_perf_monitor run-bisect ./config.yaml 809b1ccd4f1b70c0ba8a8aaf5cf6823ed1ff288e 4376c438bb43ff5d4151bf1182fa7a7c289946b8
 ```
 
 Options:

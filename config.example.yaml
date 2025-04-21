@@ -18,51 +18,54 @@ build:
     CXX: "g++"
 
 benchmarks:
-  - name: "ucc_perftest_allreduce"
-    type: "ucc"
-    benchmark_dir: "/opt/ucc/bin"
-    command: "ucc_perftest allreduce"
-    params:
-      num_processes: [2, 4, 8, 16]
-      procs_per_node: [1, 2, 4]
-      msg_sizes: [8, 1024, 65536, 1048576]
-      memory_types: ["host", "cuda"]
-    parser: "ucc_perftest"
-    metrics: ["latency", "bandwidth"]
-    slurm:
-      partition: "gpu"
-      time_limit: "00:30:00"
-      account: "hpc_project"
-      qos: "normal"
-      additional_flags:
-        gres: "gpu:1"
-        constraint: "v100"
-
-  - name: "osu_alltoall"
+  # - name: "ucc_perftest_allgather"
+  #   type: "ucc"
+  #   benchmark_dir: "/tmp/hpc-perf-monitor/build/bin"
+  #   command: "ucc_perftest -c allgather -F -m cuda -b 1 -e 32k"
+  #   params:
+  #     num_processes: [2]
+  #     procs_per_node: [1]
+  #     memory_types: ["cuda"]
+  #   parser: "ucc_perftest"
+  #   metrics: ["latency_avg", "bandwidth_avg"]
+  # - name: "ucc_perftest_allgather"
+  #   type: "ucc"
+  #   benchmark_dir: "/tmp/hpc-perf-monitor/build/bin"
+  #   command: "ucc_perftest -c allgather -F -m host -b 1 -e 32k"
+  #   params:
+  #     num_processes: [2]
+  #     procs_per_node: [1]
+  #     memory_types: ["host"]
+  #   parser: "ucc_perftest"
+  #   metrics: ["latency_avg", "bandwidth_avg"]
+  - name: "osu_bcast"
     type: "osu"
-    benchmark_dir: "/opt/osu-micro-benchmarks/mpi/collective"
-    command: "osu_alltoall"
+    benchmark_dir: "/home/ilya/work/hpcx/ompi/tests/osu-micro-benchmarks/"
+    command: "osu_bcast -i 100000 --full"
     params:
-      num_processes: [2, 4, 8]
-      procs_per_node: [1, 2]
-      msg_sizes: [1, 1024, 65536]
+      num_processes: [2]
+      procs_per_node: [1]
       memory_types: ["host"]
     parser: "osu_bench"
-    metrics: ["latency"]
-    slurm:
-      partition: "compute"
-      time_limit: "00:15:00"
-      account: "hpc_project"
-      qos: "normal"
+    metrics: ["latency_max"]
+  # - name: "osu_allgather"
+  #   type: "osu"
+  #   benchmark_dir: "/home/ilya/work/hpcx/ompi/tests/osu-micro-benchmarks/"
+  #   command: "osu_allgather -i 20000 --full"
+  #   params:
+  #     num_processes: [2]
+  #     procs_per_node: [1]
+  #     memory_types: ["host"]
+  #   parser: "osu_bench"
+  #   metrics: ["latency_avg"]
 
 regression:
   threshold_pct: 5.0
-  min_runs: 3
+  min_runs: 1
   metrics_weight:
-    latency: 1.0
-    bandwidth: 1.0
+    latency_avg: 1.0
+    bandwidth_avg: 1.0
 
 report_formats:
-  - "markdown"
   - "html"
-  - "json" 
+  - "markdown"
