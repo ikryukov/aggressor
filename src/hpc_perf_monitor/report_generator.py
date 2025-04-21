@@ -111,7 +111,8 @@ class ReportGenerator:
                 "parameters": result.parameters,
                 "summary": self._generate_summary(result.data),
                 "table": result.data.to_markdown(index=False),
-                "significant_changes": self._get_significant_changes(result.data)
+                "significant_changes": result.significant_changes,
+                "has_regression": result.has_regression
             }
             sections.append(section_data)
         
@@ -119,7 +120,8 @@ class ReportGenerator:
             "timestamp": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
             "commit_info": commit_info or {},
             "sections": sections,
-            "total_sections": len(sections)
+            "total_sections": len(sections),
+            "has_regression": any(result.has_regression for result in analysis)
         }
         
         with open(output_file, "w") as f:
@@ -143,7 +145,8 @@ class ReportGenerator:
                 "parameters": result.parameters,
                 "summary": self._generate_summary(result.data),
                 "table": self._style_analysis_table(result.data),
-                "significant_changes": self._get_significant_changes(result.data),
+                "significant_changes": result.significant_changes,
+                "has_regression": result.has_regression,
                 "charts": {
                     "latency": self._generate_latency_chart_data(result.data),
                     "bandwidth": self._generate_bandwidth_chart_data(result.data) if 'bandwidth_diff_pct' in result.data.columns else None
@@ -156,7 +159,8 @@ class ReportGenerator:
             "timestamp": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
             "commit_info": commit_info or {},
             "sections": sections,
-            "total_sections": len(sections)
+            "total_sections": len(sections),
+            "has_regression": any(result.has_regression for result in analysis)
         }
         
         with open(output_file, "w") as f:
@@ -179,10 +183,12 @@ class ReportGenerator:
                     "parameters": result.parameters,
                     "summary": self._generate_summary(result.data),
                     "data": result.data.to_dict(orient="records"),
-                    "significant_changes": self._get_significant_changes(result.data)
+                    "significant_changes": result.significant_changes,
+                    "has_regression": result.has_regression
                 }
                 for result in analysis
-            ]
+            ],
+            "has_regression": any(result.has_regression for result in analysis)
         }
         
         with open(output_file, "w") as f:

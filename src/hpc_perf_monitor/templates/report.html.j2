@@ -26,6 +26,18 @@
         .table th, .table td { border: 1px solid #ddd; padding: 8px; }
         .table th { background-color: #f2f2f2; }
         .negative { color: red; }
+        .regression-warning {
+            background-color: #ffebee;
+            border-left: 4px solid #f44336;
+            padding: 1rem;
+            margin-bottom: 1rem;
+        }
+        .significant-change {
+            background-color: #fff8e1;
+            border-left: 4px solid #ffc107;
+            padding: 0.5rem;
+            margin-bottom: 0.5rem;
+        }
     </style>
 </head>
 <body>
@@ -48,6 +60,12 @@
         </div>
         {% endif %}
 
+        {% if has_regression %}
+        <div class="alert alert-danger">
+            <strong>Warning:</strong> Performance regressions detected!
+        </div>
+        {% endif %}
+
         <ul class="nav nav-tabs" id="analysisTabs" role="tablist">
             {% for section in sections %}
             <li class="nav-item" role="presentation">
@@ -58,6 +76,9 @@
                         type="button" 
                         role="tab">
                     {{ section.title }}
+                    {% if section.has_regression %}
+                    <span class="badge bg-danger">Regression Detected</span>
+                    {% endif %}
                 </button>
             </li>
             {% endfor %}
@@ -136,30 +157,35 @@
                         <h5>Significant Changes</h5>
                     </div>
                     <div class="card-body">
-                        <div class="table-responsive">
-                            <table class="table table-striped">
-                                <thead>
-                                    <tr>
-                                        <th>Message Size</th>
-                                        <th>Latency Difference (%)</th>
-                                        <th>Bandwidth Difference (%)</th>
-                                    </tr>
-                                </thead>
-                                <tbody>
-                                    {% for change in section.significant_changes %}
-                                    <tr>
-                                        <td>{{ change.msg_size }}</td>
-                                        <td>{{ "%.2f"|format(change.latency_avg_diff_pct) }}</td>
-                                        <td>
-                                            {% if 'bandwidth_diff_pct' in change %}
-                                            {{ "%.2f"|format(change.bandwidth_diff_pct) }}
-                                            {% endif %}
-                                        </td>
-                                    </tr>
-                                    {% endfor %}
-                                </tbody>
-                            </table>
+                        {% for metric, changes in section.significant_changes.items() %}
+                        <div class="significant-change">
+                            <h6>{{ metric }}</h6>
+                            <div class="table-responsive">
+                                <table class="table table-striped">
+                                    <thead>
+                                        <tr>
+                                            <th>Message Size</th>
+                                            <th>Reference Value</th>
+                                            <th>Test Value</th>
+                                            <th>Difference (%)</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        {% for change in changes %}
+                                        <tr>
+                                            <td>{{ change.msg_size }}</td>
+                                            <td>{{ change['ref_' + metric] }}</td>
+                                            <td>{{ change['test_' + metric] }}</td>
+                                            <td class="{{ 'text-danger' if change[metric + '_diff_pct'] < 0 else 'text-success' }}">
+                                                {{ "%.2f"|format(change[metric + '_diff_pct']) }}%
+                                            </td>
+                                        </tr>
+                                        {% endfor %}
+                                    </tbody>
+                                </table>
+                            </div>
                         </div>
+                        {% endfor %}
                     </div>
                 </div>
                 {% endif %}

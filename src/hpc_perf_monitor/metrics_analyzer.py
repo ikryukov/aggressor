@@ -21,6 +21,8 @@ class AnalysisResult:
     name: str
     parameters: Dict[str, Any]
     data: pd.DataFrame
+    significant_changes: Dict[str, List[Dict[str, Any]]]  # Dictionary of metric name to list of significant changes
+    has_regression: bool  # Flag indicating if any regression was found
 
 class MetricsAnalyzer:
     """Analyzes benchmark results to detect performance regressions."""
@@ -46,6 +48,8 @@ class MetricsAnalyzer:
             AnalysisResult containing benchmark name, parameters and comparison data
         """
         comparison_data = []
+        significant_changes = {}
+        has_regression = False
         
         # Process each message size
         for msg_size in ref_result.metrics.keys():
@@ -94,16 +98,25 @@ class MetricsAnalyzer:
         df['count'] = df['count'].astype(int)
         df['msg_size'] = df['msg_size'].astype(int)
 
+        # Track significant changes and regression status
         for watch_metric in ref_result.metrics_watch:
             diff_name = f"{watch_metric}_diff_pct"
-            # less than zero means regression
-            if diff_name in df.columns and df[diff_name].min() < -self.config.threshold_pct:
-                logger.warning(f"Metric {watch_metric} has a difference of {df[diff_name].min()}%")
+            if diff_name in df.columns:
+                # Find significant changes
+                significant_rows = df[abs(df[diff_name]) > self.config.threshold_pct]
+                if not significant_rows.empty:
+                    significant_changes[watch_metric] = significant_rows.to_dict(orient='records')
+                    # Check for regression (negative difference)
+                    if df[diff_name].min() < -self.config.threshold_pct:
+                        has_regression = True
+                        logger.warning(f"Metric {watch_metric} has a difference of {df[diff_name].min()}%")
         
         return AnalysisResult(
             name=ref_result.benchmark_name,
             parameters=ref_result.parameters,
-            data=df
+            data=df,
+            significant_changes=significant_changes,
+            has_regression=has_regression
         )
 
     def analyze_results(

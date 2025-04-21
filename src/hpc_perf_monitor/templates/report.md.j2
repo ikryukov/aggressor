@@ -1,49 +1,46 @@
-# Performance Regression Report
+# Performance Analysis Report
 
-Generated on: {{ timestamp }}
+Generated at: {{ timestamp }}
 
 {% if commit_info %}
 ## Commit Information
-- Hash: {{ commit_info.hash }}
-- Author: {{ commit_info.author }}
-- Message: {{ commit_info.message }}
+```json
+{{ commit_info|tojson(indent=2) }}
+```
 {% endif %}
 
-## Summary
-
-Total benchmarks analyzed: {{ total_sections }}
+{% if has_regression %}
+## ⚠️ Performance Regressions Detected
+{% endif %}
 
 {% for section in sections %}
-### {{ section.title }}
+## {{ section.title }}{% if section.has_regression %} ⚠️{% endif %}
 
-#### Parameters
-{% for key, value in section.parameters.items() %}
-- {{ key }}: {{ value }}
-{% endfor %}
+### Parameters
+```json
+{{ section.parameters|tojson(indent=2) }}
+```
 
-#### Summary Statistics
-- Total tests: {{ section.summary.total_tests }}
-- Average latency difference: {{ "%.2f"|format(section.summary.avg_latency_diff) }}%
-- Maximum latency difference: {{ "%.2f"|format(section.summary.max_latency_diff) }}%
-- Minimum latency difference: {{ "%.2f"|format(section.summary.min_latency_diff) }}%
-{% if 'avg_bandwidth_diff' in section.summary %}
-- Average bandwidth difference: {{ "%.2f"|format(section.summary.avg_bandwidth_diff) }}%
-- Maximum bandwidth difference: {{ "%.2f"|format(section.summary.max_bandwidth_diff) }}%
-- Minimum bandwidth difference: {{ "%.2f"|format(section.summary.min_bandwidth_diff) }}%
-{% endif %}
-
-#### Detailed Results
-{{ section.table }}
+### Summary
+```json
+{{ section.summary|tojson(indent=2) }}
+```
 
 {% if section.significant_changes %}
-#### Significant Changes
-{% for change in section.significant_changes %}
-- Message size {{ change.msg_size }}:
-  - Latency difference: {{ "%.2f"|format(change.latency_avg_diff_pct) }}%
-  {% if 'bandwidth_diff_pct' in change %}
-  - Bandwidth difference: {{ "%.2f"|format(change.bandwidth_diff_pct) }}%
-  {% endif %}
+### Significant Changes
+
+{% for metric, changes in section.significant_changes.items() %}
+#### {{ metric }}
+| Message Size | Reference Value | Test Value | Difference (%) |
+|-------------|-----------------|------------|----------------|
+{% for change in changes %}
+| {{ change.msg_size }} | {{ change['ref_' + metric] }} | {{ change['test_' + metric] }} | {% if change[metric + '_diff_pct'] < 0 %}**{{ change[metric + '_diff_pct'] }}%**{% else %}{{ change[metric + '_diff_pct'] }}%{% endif %} |
+{% endfor %}
 {% endfor %}
 {% endif %}
 
+### Detailed Results
+{{ section.table }}
+
+---
 {% endfor %} 
