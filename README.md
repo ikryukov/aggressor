@@ -1,5 +1,7 @@
 # HPC Performance Monitor
 
+![Aggressor Logo](images/aggressor_logo.png)
+
 A Python service for detecting performance regressions in HPC middleware through automated benchmarking and analysis.
 
 ## Features
