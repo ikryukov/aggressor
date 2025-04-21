@@ -14,6 +14,12 @@ class MemoryType(str, Enum):
     ROCM = "rocm"
 
 
+class BenchmarkType(str, Enum):
+    """Types of benchmarks supported by the system."""
+    UCC = "ucc"
+    OSU = "osu"
+
+
 class BuildConfig(BaseModel):
     """Configuration for building HPC middleware."""
     source_dir: Path = Field(..., description="Directory containing source code")
@@ -48,6 +54,8 @@ class SlurmConfig(BaseModel):
 class BenchmarkConfig(BaseModel):
     """Configuration for a specific benchmark."""
     name: str = Field(..., description="Benchmark name")
+    type: BenchmarkType = Field(..., description="Type of benchmark (ucc or osu)")
+    benchmark_dir: Path = Field(..., description="Directory containing benchmark binaries")
     command: str = Field(..., description="Command to run the benchmark")
     params: BenchmarkParams = Field(..., description="Benchmark parameters")
     parser: str = Field(..., description="Name of parser plugin to use")

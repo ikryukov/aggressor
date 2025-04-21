@@ -50,7 +50,7 @@ class UCCPerftestParser:
         
         return False, []
 
-    def parse(self, stdout: str, stderr: str) -> Dict[str, Dict[str, float]]:
+    def parse(self, stdout: str, stderr: str) -> Dict[int, Dict[str, float]]:
         """Parse benchmark output and extract metrics.
         
         Args:
@@ -61,7 +61,7 @@ class UCCPerftestParser:
             Dictionary containing extracted metrics, organized by message size
             
         The returned structure is a dictionary where:
-        - Key: Message size in bytes
+        - Key: Message size in bytes (as integer)
         - Value: Dictionary of metrics for that message size containing:
           - count: Number of elements
           - msg_size: Message size in bytes
@@ -76,7 +76,7 @@ class UCCPerftestParser:
         if stderr:
             logger.warning("Stderr is not empty: %s", stderr)
             
-        results = {}
+        results: Dict[int, Dict[str, float]] = {}
         lines_processed = 0
         
         for line in stdout.split('\n'):
@@ -84,9 +84,9 @@ class UCCPerftestParser:
             is_data, values = self._extract_metrics_line(line)
             if is_data:
                 logger.debug("Found valid data line at line %d", lines_processed)
-                msg_size = float(values[1])
+                msg_size = int(values[1])
                 metrics = {
-                    'count': float(values[0]),
+                    'count': int(values[0]),
                     'msg_size': msg_size,
                     'latency_avg': float(values[2]),
                     'latency_min': float(values[3]),

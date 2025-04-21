@@ -3,11 +3,15 @@
 import json
 import numpy as np
 import pandas as pd
+import logging
 from pathlib import Path
 from typing import Dict, List, Optional, Any, Tuple, Union
 from datetime import datetime
 
 from jinja2 import Environment, FileSystemLoader
+from .metrics_analyzer import AnalysisResult
+
+logger = logging.getLogger(__name__)
 
 class ReportGenerator:
     """Generates formatted reports from analysis results."""
@@ -19,6 +23,10 @@ class ReportGenerator:
     def _style_analysis_table(self, df: pd.DataFrame) -> str:
         """Return HTML table with negative numbers styled in red."""
         
+        # Create a copy of the DataFrame to avoid modifying the original
+        df_display = df.copy()
+        
+        # Rename columns for display
         column_names = {
             'count': 'Count',
             'msg_size': 'Message Size',
@@ -30,15 +38,19 @@ class ReportGenerator:
             'bandwidth_diff_pct': 'Bandwidth Difference (%)'
         }
         
-        df_display = df.rename(columns=column_names)
+        # Only rename columns that exist in the DataFrame
+        existing_columns = {k: v for k, v in column_names.items() if k in df_display.columns}
+        df_display = df_display.rename(columns=existing_columns)
+        
+        # Reset index and round numeric columns
         df_display = df_display.reset_index(drop=True)
+        numeric_columns = df_display.select_dtypes(include=['float64', 'int64']).columns
+        df_display[numeric_columns] = df_display[numeric_columns].round(2)
 
         def color_negative(val):
             if isinstance(val, (int, float)) and val < 0:
                 return "color: red"
             return ""
-
-        df_display = df_display.round(2)
 
         styled = (
             df_display.style
@@ -50,7 +62,7 @@ class ReportGenerator:
 
     def generate_report(
         self,
-        analysis: pd.DataFrame,
+        analysis: List[AnalysisResult],
         output_file: Path,
         format: str = "markdown",
         commit_info: Optional[Dict] = None
@@ -58,7 +70,7 @@ class ReportGenerator:
         """Generate report in specified format.
 
         Args:
-            analysis: Analysis results DataFrame
+            analysis: List of analysis results
             output_file: Path to save report to
             format: Report format (markdown, html, or json)
             commit_info: Optional dictionary with commit information
@@ -75,68 +87,96 @@ class ReportGenerator:
         else:
             raise ValueError(f"Unsupported report format: {format}")
 
-    def generate_markdown(self, analysis: pd.DataFrame, output_file: Path, commit_info: Optional[Dict] = None) -> None:
+    def generate_markdown(self, analysis: List[AnalysisResult], output_file: Path, commit_info: Optional[Dict] = None) -> None:
         """Generate markdown report.
 
         Args:
-            analysis: Analysis results DataFrame
+            analysis: List of analysis results
             output_file: Path to save report to
             commit_info: Optional dictionary with commit information
         """
         template = self.env.get_template("report.md.j2")
         
         # Prepare data for template
+        sections = []
+        for result in analysis:
+            section_data = {
+                "title": result.name,
+                "parameters": result.parameters,
+                "summary": self._generate_summary(result.data),
+                "table": result.data.to_markdown(index=False),
+                "significant_changes": self._get_significant_changes(result.data)
+            }
+            sections.append(section_data)
+        
         report_data = {
             "timestamp": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
             "commit_info": commit_info or {},
-            "summary": self._generate_summary(analysis),
-            "table": analysis.to_markdown(index=False),
-            "significant_changes": self._get_significant_changes(analysis)
+            "sections": sections,
+            "total_sections": len(sections)
         }
         
         with open(output_file, "w") as f:
             f.write(template.render(**report_data))
 
-    def generate_html(self, analysis: pd.DataFrame, output_file: Path, commit_info: Optional[Dict] = None) -> None:
+    def generate_html(self, analysis: List[AnalysisResult], output_file: Path, commit_info: Optional[Dict] = None) -> None:
         """Generate HTML report.
 
         Args:
-            analysis: Analysis results DataFrame
+            analysis: List of analysis results
             output_file: Path to save report to
             commit_info: Optional dictionary with commit information
         """
         template = self.env.get_template("report.html.j2")
         
         # Prepare data for template
+        sections = []
+        for result in analysis:
+            section_data = {
+                "title": result.name,
+                "parameters": result.parameters,
+                "summary": self._generate_summary(result.data),
+                "table": self._style_analysis_table(result.data),
+                "significant_changes": self._get_significant_changes(result.data),
+                "charts": {
+                    "latency": self._generate_latency_chart_data(result.data),
+                    "bandwidth": self._generate_bandwidth_chart_data(result.data) if 'bandwidth_diff_pct' in result.data.columns else None
+                }
+            }
+            sections.append(section_data)
+        
+        # Prepare overall report data
         report_data = {
             "timestamp": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
             "commit_info": commit_info or {},
-            "summary": self._generate_summary(analysis),
-            "table": self._style_analysis_table(analysis),
-            "significant_changes": self._get_significant_changes(analysis),
-            "charts": {
-                "latency": self._generate_latency_chart_data(analysis),
-                "bandwidth": self._generate_bandwidth_chart_data(analysis)
-            }
+            "sections": sections,
+            "total_sections": len(sections)
         }
         
         with open(output_file, "w") as f:
             f.write(template.render(**report_data))
 
-    def generate_json(self, analysis: pd.DataFrame, output_file: Path, commit_info: Optional[Dict] = None) -> None:
+    def generate_json(self, analysis: List[AnalysisResult], output_file: Path, commit_info: Optional[Dict] = None) -> None:
         """Generate JSON report.
 
         Args:
-            analysis: Analysis results DataFrame
+            analysis: List of analysis results
             output_file: Path to save report to
             commit_info: Optional dictionary with commit information
         """
         report_data = {
             "timestamp": datetime.now().isoformat(),
             "commit_info": commit_info or {},
-            "summary": self._generate_summary(analysis),
-            "data": analysis.to_dict(orient="records"),
-            "significant_changes": self._get_significant_changes(analysis)
+            "sections": [
+                {
+                    "name": result.name,
+                    "parameters": result.parameters,
+                    "summary": self._generate_summary(result.data),
+                    "data": result.data.to_dict(orient="records"),
+                    "significant_changes": self._get_significant_changes(result.data)
+                }
+                for result in analysis
+            ]
         }
         
         with open(output_file, "w") as f:
@@ -151,15 +191,22 @@ class ReportGenerator:
         Returns:
             Dictionary containing summary statistics
         """
-        return {
+        summary = {
             "total_tests": len(analysis),
             "avg_latency_diff": analysis["latency_diff_pct"].mean(),
             "max_latency_diff": analysis["latency_diff_pct"].max(),
             "min_latency_diff": analysis["latency_diff_pct"].min(),
-            "avg_bandwidth_diff": analysis["bandwidth_diff_pct"].mean(),
-            "max_bandwidth_diff": analysis["bandwidth_diff_pct"].max(),
-            "min_bandwidth_diff": analysis["bandwidth_diff_pct"].min()
         }
+        
+        # Add bandwidth metrics if they exist
+        if 'bandwidth_diff_pct' in analysis.columns:
+            summary.update({
+                "avg_bandwidth_diff": analysis["bandwidth_diff_pct"].mean(),
+                "max_bandwidth_diff": analysis["bandwidth_diff_pct"].max(),
+                "min_bandwidth_diff": analysis["bandwidth_diff_pct"].min()
+            })
+            
+        return summary
 
     def _get_significant_changes(self, analysis: pd.DataFrame, threshold: float = 1.0) -> List[Dict[str, Any]]:
         """Get significant changes exceeding threshold.
@@ -171,10 +218,15 @@ class ReportGenerator:
         Returns:
             List of dictionaries containing significant changes
         """
-        significant = analysis[
-            (abs(analysis["latency_diff_pct"]) > threshold) |
-            (abs(analysis["bandwidth_diff_pct"]) > threshold)
-        ]
+        # Start with latency changes
+        significant = analysis[abs(analysis["latency_diff_pct"]) > threshold]
+        
+        # Add bandwidth changes if they exist
+        if 'bandwidth_diff_pct' in analysis.columns:
+            significant = analysis[
+                (abs(analysis["latency_diff_pct"]) > threshold) |
+                (abs(analysis["bandwidth_diff_pct"]) > threshold)
+            ]
         
         return significant.to_dict(orient="records")
 
@@ -203,6 +255,9 @@ class ReportGenerator:
         Returns:
             Dictionary with chart data
         """
+        if 'bandwidth_diff_pct' not in analysis.columns:
+            return None
+            
         return {
             "msg_sizes": analysis["msg_size"].tolist(),
             "ref_bandwidth": analysis["ref_bandwidth_avg"].tolist(),

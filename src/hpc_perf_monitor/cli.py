@@ -223,15 +223,12 @@ def run_analysis(
                     test_hash
                 )
 
-                logger.info(f"Test results: {test_results}")
-
                 # Display result summary
                 logger.info(f"Reference commit: {ref_info.short_hash}")
                 logger.info(f"Test commit: {test_info.short_hash}")
 
                 # Analyze results
                 analysis = metrics_analyzer.analyze_results(ref_results, test_results)
-                logger.info(f"Analysis results: {analysis}")
 
                 # Generate reports in all requested formats
                 for report_format in config.report_formats:

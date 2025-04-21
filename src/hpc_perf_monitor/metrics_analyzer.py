@@ -2,7 +2,7 @@
 
 import json
 import logging
-from dataclasses import asdict
+from dataclasses import dataclass, asdict
 from pathlib import Path
 from typing import Dict, List, Optional, Tuple, Any
 
@@ -14,6 +14,13 @@ from .config import RegressionConfig
 
 # Configure logging
 logger = logging.getLogger(__name__)
+
+@dataclass
+class AnalysisResult:
+    """Result of benchmark analysis."""
+    name: str
+    parameters: Dict[str, Any]
+    data: pd.DataFrame
 
 class MetricsAnalyzer:
     """Analyzes benchmark results to detect performance regressions."""
@@ -28,44 +35,47 @@ class MetricsAnalyzer:
         logger.info("Initialized MetricsAnalyzer with threshold: %f%%", self.config.threshold_pct)
         logger.debug("Metrics weights configuration: %s", self.config.metrics_weight)
 
-    def analyze_results(
-        self,
-        ref_results: List[BenchmarkResult],
-        test_results: List[BenchmarkResult]
-    ) -> pd.DataFrame:
-        """Analyze benchmark results and calculate performance differences.
+    def _process_result(self, ref_result: BenchmarkResult, test_result: BenchmarkResult) -> AnalysisResult:
+        """Process benchmark results and calculate performance differences.
 
         Args:
-            ref_results: List of reference benchmark results
-            test_results: List of test benchmark results to compare against reference
+            ref_result: Reference benchmark result
+            test_result: Test benchmark result
 
         Returns:
-            DataFrame containing comparison results with percentage differences
+            AnalysisResult containing benchmark name, parameters and comparison data
         """
         comparison_data = []
         
         # Process each message size
-        for msg_size in ref_results[0].metrics.keys():
-            ref_metrics = ref_results[0].metrics[msg_size]
-            test_metrics = test_results[0].metrics[msg_size]
+        for msg_size in ref_result.metrics.keys():
+            ref_metrics = ref_result.metrics[msg_size]
+            test_metrics = test_result.metrics[msg_size]
             
-            # Calculate percentage differences
+            # Calculate percentage differences for latency
             latency_diff = ((test_metrics['latency_avg'] - ref_metrics['latency_avg']) / 
                           ref_metrics['latency_avg']) * 100
-            bandwidth_diff = ((test_metrics['bandwidth_avg'] - ref_metrics['bandwidth_avg']) / 
-                            ref_metrics['bandwidth_avg']) * 100 if ref_metrics['bandwidth_avg'] != 0 else 0
             
-            comparison_data.append({
+            # Initialize comparison entry with common metrics
+            comparison_entry = {
                 'count': ref_metrics['count'],
                 'msg_size': msg_size,
                 'ref_latency_avg': ref_metrics['latency_avg'],
                 'test_latency_avg': test_metrics['latency_avg'],
                 'latency_diff_pct': latency_diff,
-                'ref_bandwidth_avg': ref_metrics['bandwidth_avg'],
-                'test_bandwidth_avg': test_metrics['bandwidth_avg'],
-                'bandwidth_diff_pct': bandwidth_diff,
-                
-            })
+            }
+            
+            # Add bandwidth metrics if they exist
+            if 'bandwidth_avg' in ref_metrics and 'bandwidth_avg' in test_metrics:
+                bandwidth_diff = ((test_metrics['bandwidth_avg'] - ref_metrics['bandwidth_avg']) / 
+                                ref_metrics['bandwidth_avg']) * 100 if ref_metrics['bandwidth_avg'] != 0 else 0
+                comparison_entry.update({
+                    'ref_bandwidth_avg': ref_metrics['bandwidth_avg'],
+                    'test_bandwidth_avg': test_metrics['bandwidth_avg'],
+                    'bandwidth_diff_pct': bandwidth_diff,
+                })
+            
+            comparison_data.append(comparison_entry)
         
         # Create DataFrame and sort by message size
         df = pd.DataFrame(comparison_data)
@@ -80,5 +90,28 @@ class MetricsAnalyzer:
             logger.warning("Significant latency differences found:\n%s", 
                          significant_latency[['msg_size', 'latency_diff_pct']])
         
-        return df
+        return AnalysisResult(
+            name=ref_result.benchmark_name,
+            parameters=ref_result.parameters,
+            data=df
+        )
 
+    def analyze_results(
+        self,
+        ref_results: List[BenchmarkResult],
+        test_results: List[BenchmarkResult]
+    ) -> List[AnalysisResult]:
+        """Analyze benchmark results and calculate performance differences.
+
+        Args:
+            ref_results: List of reference benchmark results
+            test_results: List of test benchmark results to compare against reference
+
+        Returns:
+            List of AnalysisResult containing comparison results with percentage differences
+        """
+        analysis_results = []
+        for ref_result, test_result in zip(ref_results, test_results):
+            analysis_results.append(self._process_result(ref_result, test_result))
+
+        return analysis_results

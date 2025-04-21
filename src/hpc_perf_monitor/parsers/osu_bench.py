@@ -35,19 +35,21 @@ class OSUBenchParser:
         # Try to parse a data line
         try:
             values = [v for v in clean_line.split() if v]
-            if len(values) >= 2:  # At least size and latency
+            if len(values) >= 5:  # Size, Avg Latency, Min Latency, Max Latency, Iterations
                 # Verify values are numeric
-                msg_size = float(values[0])
-                latency = float(values[1])
+                msg_size = int(values[0])
+                avg_latency = float(values[1])
+                min_latency = float(values[2])
+                max_latency = float(values[3])
+                iterations = int(values[4])
                 
                 metrics = {
                     'msg_size': msg_size,
-                    'latency': latency
+                    'latency_avg': avg_latency,
+                    'latency_min': min_latency,
+                    'latency_max': max_latency,
+                    'count': iterations
                 }
-                
-                # Add additional metrics if present (some OSU benchmarks provide more data)
-                if len(values) >= 3:
-                    metrics['bandwidth'] = float(values[2])
                 
                 logger.debug(f"Found valid data line: {metrics}")
                 return True, metrics
@@ -59,7 +61,7 @@ class OSUBenchParser:
             logger.debug(f"Skipping line, not a data row: {e}")
             return False, None
     
-    def parse(self, stdout: str, stderr: str) -> Dict[str, float]:
+    def parse(self, stdout: str, stderr: str) -> Dict[int, Dict[str, float]]:
         """Parse benchmark output and extract metrics.
         
         Args:
@@ -67,12 +69,14 @@ class OSUBenchParser:
             stderr: Standard error from benchmark
             
         Returns:
-            Dictionary containing extracted metrics
+            Dictionary containing extracted metrics, organized by message size
             
-        The returned metrics include:
+        The returned metrics for each message size include:
         - msg_size: Message size in bytes
-        - latency: Latency in microseconds
-        - bandwidth: Bandwidth in MB/s (if available)
+        - latency_avg: Average latency in microseconds
+        - latency_min: Minimum latency in microseconds
+        - latency_max: Maximum latency in microseconds
+        - count: Number of iterations performed
         
         Raises:
             ValueError: If no valid data can be extracted from the output
@@ -81,12 +85,12 @@ class OSUBenchParser:
         if stderr:
             logger.warning("Stderr is not empty: %s", stderr)
             
-        metrics: Dict[str, float] = {}
+        metrics_by_size: Dict[int, Dict[str, float]] = {}
         found_data = False
+        lines_processed = 0
         
         # Skip header lines and process data
         in_data_section = False
-        lines_processed = 0
         
         for line in stdout.split('\n'):
             lines_processed += 1
@@ -103,17 +107,16 @@ class OSUBenchParser:
             # Try to parse data
             is_data, extracted_metrics = self._extract_data_line(line)
             if is_data and extracted_metrics is not None:
-                # If this parser finds multiple data points, it takes the last one
-                metrics = extracted_metrics
+                msg_size = int(extracted_metrics['msg_size'])
+                metrics_by_size[msg_size] = extracted_metrics
                 found_data = True
+                logger.debug("Found valid data line at line %d: %s", lines_processed, extracted_metrics)
         
         if not found_data:
-            logger.warning(f"No valid data lines found in output after processing {lines_processed} lines")
+            logger.warning("No valid data lines found in output after processing %d lines", lines_processed)
             raise ValueError("Failed to extract metrics from OSU benchmark output")
             
-        logger.info(
-            f"Successfully parsed OSU benchmark results: "
-            f"msg_size={metrics['msg_size']}, latency={metrics['latency']}"
-        )
+        logger.info("Successfully parsed OSU benchmark results with %d different message sizes", 
+                  len(metrics_by_size))
                 
-        return metrics 
+        return metrics_by_size 

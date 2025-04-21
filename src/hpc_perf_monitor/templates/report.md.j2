@@ -1,36 +1,49 @@
-# Performance Analysis Report
+# Performance Regression Report
 
-Generated on {{ timestamp }}
+Generated on: {{ timestamp }}
 
 {% if commit_info %}
 ## Commit Information
-{% for key, value in commit_info.items() %}
-- **{{ key }}**: {{ value }}
+- Hash: {{ commit_info.hash }}
+- Author: {{ commit_info.author }}
+- Message: {{ commit_info.message }}
+{% endif %}
+
+## Summary
+
+Total benchmarks analyzed: {{ total_sections }}
+
+{% for section in sections %}
+### {{ section.title }}
+
+#### Parameters
+{% for key, value in section.parameters.items() %}
+- {{ key }}: {{ value }}
+{% endfor %}
+
+#### Summary Statistics
+- Total tests: {{ section.summary.total_tests }}
+- Average latency difference: {{ "%.2f"|format(section.summary.avg_latency_diff) }}%
+- Maximum latency difference: {{ "%.2f"|format(section.summary.max_latency_diff) }}%
+- Minimum latency difference: {{ "%.2f"|format(section.summary.min_latency_diff) }}%
+{% if 'avg_bandwidth_diff' in section.summary %}
+- Average bandwidth difference: {{ "%.2f"|format(section.summary.avg_bandwidth_diff) }}%
+- Maximum bandwidth difference: {{ "%.2f"|format(section.summary.max_bandwidth_diff) }}%
+- Minimum bandwidth difference: {{ "%.2f"|format(section.summary.min_bandwidth_diff) }}%
+{% endif %}
+
+#### Detailed Results
+{{ section.table }}
+
+{% if section.significant_changes %}
+#### Significant Changes
+{% for change in section.significant_changes %}
+- Message size {{ change.msg_size }}:
+  - Latency difference: {{ "%.2f"|format(change.latency_diff_pct) }}%
+  {% if 'bandwidth_diff_pct' in change %}
+  - Bandwidth difference: {{ "%.2f"|format(change.bandwidth_diff_pct) }}%
+  {% endif %}
 {% endfor %}
 {% endif %}
 
-## Summary Statistics
-
-### Latency Differences
-- Average: {{ "%.2f"|format(summary.avg_latency_diff) }}%
-- Maximum: {{ "%.2f"|format(summary.max_latency_diff) }}%
-- Minimum: {{ "%.2f"|format(summary.min_latency_diff) }}%
-
-### Bandwidth Differences
-- Average: {{ "%.2f"|format(summary.avg_bandwidth_diff) }}%
-- Maximum: {{ "%.2f"|format(summary.max_bandwidth_diff) }}%
-- Minimum: {{ "%.2f"|format(summary.min_bandwidth_diff) }}%
-
-## Detailed Results
-
-{{ table }}
-
-{% if significant_changes %}
-## Significant Changes
-
-| Message Size | Latency Difference (%) | Bandwidth Difference (%) |
-|--------------|------------------------|--------------------------|
-{% for change in significant_changes %}
-| {{ change.msg_size }} | {{ "%.2f"|format(change.latency_diff_pct) }} | {{ "%.2f"|format(change.bandwidth_diff_pct) }} |
-{% endfor %}
-{% endif %} 
+{% endfor %} 

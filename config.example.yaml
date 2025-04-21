@@ -19,6 +19,8 @@ build:
 
 benchmarks:
   - name: "ucc_perftest_allreduce"
+    type: "ucc"
+    benchmark_dir: "/opt/ucc/bin"
     command: "ucc_perftest allreduce"
     params:
       num_processes: [2, 4, 8, 16]
@@ -37,6 +39,8 @@ benchmarks:
         constraint: "v100"
 
   - name: "osu_alltoall"
+    type: "osu"
+    benchmark_dir: "/opt/osu-micro-benchmarks/mpi/collective"
     command: "osu_alltoall"
     params:
       num_processes: [2, 4, 8]

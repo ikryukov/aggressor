@@ -15,6 +15,17 @@
         .summary-card {
             margin-bottom: 20px;
         }
+        .nav-tabs {
+            margin-bottom: 20px;
+        }
+        .tab-content {
+            padding: 20px 0;
+        }
+        body { font-family: Arial, sans-serif; margin: 20px; }
+        .table { border-collapse: collapse; width: 100%; }
+        .table th, .table td { border: 1px solid #ddd; padding: 8px; }
+        .table th { background-color: #f2f2f2; }
+        .negative { color: red; }
     </style>
 </head>
 <body>
@@ -37,108 +48,142 @@
         </div>
         {% endif %}
 
-        <div class="card summary-card">
-            <div class="card-header">
-                <h5>Summary Statistics</h5>
-            </div>
-            <div class="card-body">
-                <div class="row">
-                    <div class="col-md-6">
-                        <h6>Latency Differences</h6>
-                        <ul>
-                            <li>Average: {{ "%.2f"|format(summary.avg_latency_diff) }}%</li>
-                            <li>Maximum: {{ "%.2f"|format(summary.max_latency_diff) }}%</li>
-                            <li>Minimum: {{ "%.2f"|format(summary.min_latency_diff) }}%</li>
-                        </ul>
+        <ul class="nav nav-tabs" id="analysisTabs" role="tablist">
+            {% for section in sections %}
+            <li class="nav-item" role="presentation">
+                <button class="nav-link {% if loop.first %}active{% endif %}" 
+                        id="tab-{{ loop.index }}" 
+                        data-bs-toggle="tab" 
+                        data-bs-target="#section-{{ loop.index }}" 
+                        type="button" 
+                        role="tab">
+                    {{ section.title }}
+                </button>
+            </li>
+            {% endfor %}
+        </ul>
+
+        <div class="tab-content" id="analysisTabContent">
+            {% for section in sections %}
+            <div class="tab-pane fade {% if loop.first %}show active{% endif %}" 
+                 id="section-{{ loop.index }}" 
+                 role="tabpanel">
+                
+                <div class="card summary-card">
+                    <div class="card-header">
+                        <h5>Summary Statistics</h5>
                     </div>
-                    <div class="col-md-6">
-                        <h6>Bandwidth Differences</h6>
-                        <ul>
-                            <li>Average: {{ "%.2f"|format(summary.avg_bandwidth_diff) }}%</li>
-                            <li>Maximum: {{ "%.2f"|format(summary.max_bandwidth_diff) }}%</li>
-                            <li>Minimum: {{ "%.2f"|format(summary.min_bandwidth_diff) }}%</li>
-                        </ul>
+                    <div class="card-body">
+                        <div class="row">
+                            <div class="col-md-6">
+                                <h6>Latency Differences</h6>
+                                <ul>
+                                    <li>Average: {{ "%.2f"|format(section.summary.avg_latency_diff) }}%</li>
+                                    <li>Maximum: {{ "%.2f"|format(section.summary.max_latency_diff) }}%</li>
+                                    <li>Minimum: {{ "%.2f"|format(section.summary.min_latency_diff) }}%</li>
+                                </ul>
+                            </div>
+                            <div class="col-md-6">
+                                <h6>Bandwidth Differences</h6>
+                                <ul>
+                                    {% if 'avg_bandwidth_diff' in section.summary %}
+                                    <li>Average: {{ "%.2f"|format(section.summary.avg_bandwidth_diff) }}%</li>
+                                    <li>Maximum: {{ "%.2f"|format(section.summary.max_bandwidth_diff) }}%</li>
+                                    <li>Minimum: {{ "%.2f"|format(section.summary.min_bandwidth_diff) }}%</li>
+                                    {% endif %}
+                                </ul>
+                            </div>
+                        </div>
                     </div>
                 </div>
-            </div>
-        </div>
 
-        <div class="card summary-card">
-            <div class="card-header">
-                <h5>Latency Analysis</h5>
-            </div>
-            <div class="card-body">
-                <div class="chart-container">
-                    <canvas id="latencyChart"></canvas>
+                <div class="card summary-card">
+                    <div class="card-header">
+                        <h5>Latency Analysis</h5>
+                    </div>
+                    <div class="card-body">
+                        <div class="chart-container">
+                            <canvas id="latencyChart-{{ loop.index }}"></canvas>
+                        </div>
+                    </div>
                 </div>
-            </div>
-        </div>
 
-        <div class="card summary-card">
-            <div class="card-header">
-                <h5>Bandwidth Analysis</h5>
-            </div>
-            <div class="card-body">
-                <div class="chart-container">
-                    <canvas id="bandwidthChart"></canvas>
+                {% if section.charts.bandwidth %}
+                <div class="card summary-card">
+                    <div class="card-header">
+                        <h5>Bandwidth Analysis</h5>
+                    </div>
+                    <div class="card-body">
+                        <div class="chart-container">
+                            <canvas id="bandwidthChart-{{ loop.index }}"></canvas>
+                        </div>
+                    </div>
                 </div>
-            </div>
-        </div>
+                {% endif %}
 
-        <div class="card summary-card">
-            <div class="card-header">
-                <h5>Detailed Results</h5>
-            </div>
-            <div class="card-body">
-                {{ table|safe }}
-            </div>
-        </div>
-
-        {% if significant_changes %}
-        <div class="card summary-card">
-            <div class="card-header">
-                <h5>Significant Changes</h5>
-            </div>
-            <div class="card-body">
-                <div class="table-responsive">
-                    <table class="table table-striped">
-                        <thead>
-                            <tr>
-                                <th>Message Size</th>
-                                <th>Latency Difference (%)</th>
-                                <th>Bandwidth Difference (%)</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            {% for change in significant_changes %}
-                            <tr>
-                                <td>{{ change.msg_size }}</td>
-                                <td>{{ "%.2f"|format(change.latency_diff_pct) }}</td>
-                                <td>{{ "%.2f"|format(change.bandwidth_diff_pct) }}</td>
-                            </tr>
-                            {% endfor %}
-                        </tbody>
-                    </table>
+                <div class="card summary-card">
+                    <div class="card-header">
+                        <h5>Detailed Results</h5>
+                    </div>
+                    <div class="card-body">
+                        {{ section.table|safe }}
+                    </div>
                 </div>
+
+                {% if section.significant_changes %}
+                <div class="card summary-card">
+                    <div class="card-header">
+                        <h5>Significant Changes</h5>
+                    </div>
+                    <div class="card-body">
+                        <div class="table-responsive">
+                            <table class="table table-striped">
+                                <thead>
+                                    <tr>
+                                        <th>Message Size</th>
+                                        <th>Latency Difference (%)</th>
+                                        <th>Bandwidth Difference (%)</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {% for change in section.significant_changes %}
+                                    <tr>
+                                        <td>{{ change.msg_size }}</td>
+                                        <td>{{ "%.2f"|format(change.latency_diff_pct) }}</td>
+                                        <td>
+                                            {% if 'bandwidth_diff_pct' in change %}
+                                            {{ "%.2f"|format(change.bandwidth_diff_pct) }}
+                                            {% endif %}
+                                        </td>
+                                    </tr>
+                                    {% endfor %}
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+                {% endif %}
             </div>
+            {% endfor %}
         </div>
-        {% endif %}
     </div>
 
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/js/bootstrap.bundle.min.js"></script>
     <script>
-        // Latency Chart
-        new Chart(document.getElementById('latencyChart'), {
+        {% for section in sections %}
+        // Latency Chart for {{ section.title }}
+        new Chart(document.getElementById('latencyChart-{{ loop.index }}'), {
             type: 'line',
             data: {
-                labels: {{ charts.latency.msg_sizes|tojson }},
+                labels: {{ section.charts.latency.msg_sizes|tojson }},
                 datasets: [{
                     label: 'Reference Latency',
-                    data: {{ charts.latency.ref_latency|tojson }},
+                    data: {{ section.charts.latency.ref_latency|tojson }},
                     borderColor: 'rgb(75, 192, 192)',
                     tension: 0.1
                 }, {
                     label: 'Test Latency',
-                    data: {{ charts.latency.test_latency|tojson }},
+                    data: {{ section.charts.latency.test_latency|tojson }},
                     borderColor: 'rgb(255, 99, 132)',
                     tension: 0.1
                 }]
@@ -164,19 +209,20 @@
             }
         });
 
-        // Bandwidth Chart
-        new Chart(document.getElementById('bandwidthChart'), {
+        {% if section.charts.bandwidth %}
+        // Bandwidth Chart for {{ section.title }}
+        new Chart(document.getElementById('bandwidthChart-{{ loop.index }}'), {
             type: 'line',
             data: {
-                labels: {{ charts.bandwidth.msg_sizes|tojson }},
+                labels: {{ section.charts.bandwidth.msg_sizes|tojson }},
                 datasets: [{
                     label: 'Reference Bandwidth',
-                    data: {{ charts.bandwidth.ref_bandwidth|tojson }},
+                    data: {{ section.charts.bandwidth.ref_bandwidth|tojson }},
                     borderColor: 'rgb(75, 192, 192)',
                     tension: 0.1
                 }, {
                     label: 'Test Bandwidth',
-                    data: {{ charts.bandwidth.test_bandwidth|tojson }},
+                    data: {{ section.charts.bandwidth.test_bandwidth|tojson }},
                     borderColor: 'rgb(255, 99, 132)',
                     tension: 0.1
                 }]
@@ -201,6 +247,8 @@
                 }
             }
         });
+        {% endif %}
+        {% endfor %}
     </script>
 </body>
 </html> 
