@@ -24,8 +24,8 @@ A Python service for detecting performance regressions in HPC middleware through
 
 1. Clone the repository:
    ```bash
-   git clone https://github.com/yourusername/hpc-perf-monitor.git
-   cd hpc-perf-monitor
+   git clone https://github.com/ikryukov/aggressor.git
+   cd aggressor
    ```
 
 2. Install using pip:
