@@ -53,16 +53,26 @@ class MetricsAnalyzer:
             test_metrics = test_result.metrics[msg_size]
             
             # Calculate percentage differences for latency
-            latency_diff = ((test_metrics['latency_avg'] - ref_metrics['latency_avg']) / 
+            latency_avg_diff = -((test_metrics['latency_avg'] - ref_metrics['latency_avg']) / 
                           ref_metrics['latency_avg']) * 100
-            
+            latency_min_diff = -((test_metrics['latency_min'] - ref_metrics['latency_min']) / 
+                          ref_metrics['latency_min']) * 100
+            latency_max_diff = -((test_metrics['latency_max'] - ref_metrics['latency_max']) / 
+                          ref_metrics['latency_max']) * 100
+
             # Initialize comparison entry with common metrics
             comparison_entry = {
                 'count': ref_metrics['count'],
                 'msg_size': msg_size,
                 'ref_latency_avg': ref_metrics['latency_avg'],
                 'test_latency_avg': test_metrics['latency_avg'],
-                'latency_diff_pct': latency_diff,
+                'ref_latency_min': ref_metrics['latency_min'],
+                'test_latency_min': test_metrics['latency_min'],
+                'ref_latency_max': ref_metrics['latency_max'],
+                'test_latency_max': test_metrics['latency_max'],
+                'latency_avg_diff_pct': latency_avg_diff,
+                'latency_min_diff_pct': latency_min_diff,
+                'latency_max_diff_pct': latency_max_diff,
             }
             
             # Add bandwidth metrics if they exist
@@ -84,11 +94,11 @@ class MetricsAnalyzer:
         df['count'] = df['count'].astype(int)
         df['msg_size'] = df['msg_size'].astype(int)
 
-        # Log significant differences
-        significant_latency = df[abs(df['latency_diff_pct']) > self.config.threshold_pct]
-        if not significant_latency.empty:
-            logger.warning("Significant latency differences found:\n%s", 
-                         significant_latency[['msg_size', 'latency_diff_pct']])
+        for watch_metric in ref_result.metrics_watch:
+            diff_name = f"{watch_metric}_diff_pct"
+            # less than zero means regression
+            if diff_name in df.columns and df[diff_name].min() < -self.config.threshold_pct:
+                logger.warning(f"Metric {watch_metric} has a difference of {df[diff_name].min()}%")
         
         return AnalysisResult(
             name=ref_result.benchmark_name,

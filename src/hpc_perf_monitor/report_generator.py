@@ -30,12 +30,18 @@ class ReportGenerator:
         column_names = {
             'count': 'Count',
             'msg_size': 'Message Size',
-            'ref_latency_avg': 'Reference Latency (avg)',
-            'test_latency_avg': 'Test Latency (avg)',
-            'latency_diff_pct': 'Latency Difference (%)',
-            'ref_bandwidth_avg': 'Reference Bandwidth GB/s (avg)',
-            'test_bandwidth_avg': 'Test Bandwidth GB/s (avg)',
-            'bandwidth_diff_pct': 'Bandwidth Difference (%)'
+            'ref_latency_avg': 'Reference Latency Avg (us)',
+            'test_latency_avg': 'Test Latency Avg (us)',
+            'latency_avg_diff_pct': 'Latency Avg Difference (%)',
+            'ref_bandwidth_avg': 'Reference Bandwidth Avg (GB/s)',
+            'test_bandwidth_avg': 'Test Bandwidth Avg (GB/s)',
+            'bandwidth_diff_pct': 'Bandwidth Difference (%)',
+            'ref_latency_min': 'Reference Latency Min (us)',
+            'test_latency_min': 'Test Latency Min (us)',
+            'latency_min_diff_pct': 'Latency Min Difference (%)',
+            'ref_latency_max': 'Reference Latency Max (us)',
+            'test_latency_max': 'Test Latency Max (us)',
+            'latency_max_diff_pct': 'Latency Max Difference (%)'
         }
         
         # Only rename columns that exist in the DataFrame
@@ -193,9 +199,9 @@ class ReportGenerator:
         """
         summary = {
             "total_tests": len(analysis),
-            "avg_latency_diff": analysis["latency_diff_pct"].mean(),
-            "max_latency_diff": analysis["latency_diff_pct"].max(),
-            "min_latency_diff": analysis["latency_diff_pct"].min(),
+            "avg_latency_diff": analysis["latency_avg_diff_pct"].mean(),
+            "max_latency_diff": analysis["latency_max_diff_pct"].max(),
+            "min_latency_diff": analysis["latency_min_diff_pct"].min(),
         }
         
         # Add bandwidth metrics if they exist
@@ -219,12 +225,12 @@ class ReportGenerator:
             List of dictionaries containing significant changes
         """
         # Start with latency changes
-        significant = analysis[abs(analysis["latency_diff_pct"]) > threshold]
+        significant = analysis[abs(analysis["latency_avg_diff_pct"]) > threshold]
         
         # Add bandwidth changes if they exist
         if 'bandwidth_diff_pct' in analysis.columns:
             significant = analysis[
-                (abs(analysis["latency_diff_pct"]) > threshold) |
+                (abs(analysis["latency_avg_diff_pct"]) > threshold) |
                 (abs(analysis["bandwidth_diff_pct"]) > threshold)
             ]
         
@@ -243,7 +249,7 @@ class ReportGenerator:
             "msg_sizes": analysis["msg_size"].tolist(),
             "ref_latency": analysis["ref_latency_avg"].tolist(),
             "test_latency": analysis["test_latency_avg"].tolist(),
-            "diff_pct": analysis["latency_diff_pct"].tolist()
+            "diff_pct": analysis["latency_avg_diff_pct"].tolist()
         }
 
     def _generate_bandwidth_chart_data(self, analysis: pd.DataFrame) -> Dict[str, List[float]]:

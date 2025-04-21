@@ -39,7 +39,7 @@ Total benchmarks analyzed: {{ total_sections }}
 #### Significant Changes
 {% for change in section.significant_changes %}
 - Message size {{ change.msg_size }}:
-  - Latency difference: {{ "%.2f"|format(change.latency_diff_pct) }}%
+  - Latency difference: {{ "%.2f"|format(change.latency_avg_diff_pct) }}%
   {% if 'bandwidth_diff_pct' in change %}
   - Bandwidth difference: {{ "%.2f"|format(change.bandwidth_diff_pct) }}%
   {% endif %}

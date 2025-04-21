@@ -149,7 +149,7 @@
                                     {% for change in section.significant_changes %}
                                     <tr>
                                         <td>{{ change.msg_size }}</td>
-                                        <td>{{ "%.2f"|format(change.latency_diff_pct) }}</td>
+                                        <td>{{ "%.2f"|format(change.latency_avg_diff_pct) }}</td>
                                         <td>
                                             {% if 'bandwidth_diff_pct' in change %}
                                             {{ "%.2f"|format(change.bandwidth_diff_pct) }}

@@ -26,6 +26,7 @@ class BenchmarkResult:
     benchmark_name: str
     parameters: Dict[str, Union[int, str]]
     metrics: Dict[str, float]
+    metrics_watch: List[str]
     timestamp: datetime
     stdout: str
     stderr: str
@@ -436,13 +437,14 @@ class BenchmarkRunner:
         parser = get_parser(config.parser)
         metrics = parser.parse(stdout, stderr)
 
-        logger.info("Parsed metrics: %s", metrics)
+        logger.debug("Parsed metrics: %s", metrics)
 
         return BenchmarkResult(
             commit_hash=commit_hash,
             benchmark_name=config.name,
             parameters=params,
             metrics=metrics,
+            metrics_watch=config.metrics,
             timestamp=datetime.now(),
             stdout=stdout,
             stderr=stderr
