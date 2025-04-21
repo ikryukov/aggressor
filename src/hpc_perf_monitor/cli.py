@@ -88,13 +88,11 @@ async def run_benchmarks(
         for np in benchmark.params.num_processes:
             for ppn in benchmark.params.procs_per_node:
                 for mem in benchmark.params.memory_types:
-                    for size in benchmark.params.msg_sizes:
-                        params_list.append({
-                            "num_processes": np,
-                            "procs_per_node": ppn,
-                            "memory_type": mem,
-                            "msg_size": size
-                        })
+                    params_list.append({
+                        "num_processes": np,
+                        "procs_per_node": ppn,
+                        "memory_type": mem,
+                    })
 
         # Run each parameter combination
         for params in params_list:
@@ -224,6 +222,8 @@ def run_analysis(
                     config,
                     test_hash
                 )
+
+                logger.info(f"Test results: {test_results}")
 
                 # Display result summary
                 logger.info(f"Reference commit: {ref_info.short_hash}")

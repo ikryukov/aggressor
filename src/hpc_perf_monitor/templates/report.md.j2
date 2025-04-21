@@ -1,39 +1,36 @@
 # Performance Analysis Report
 
-## Summary
-- Reference Commit: `{{ analysis.summary.ref_commit }}`
-- Test Commit: `{{ analysis.summary.test_commit }}`
-- Total Comparisons: {{ analysis.summary.total_comparisons }}
-- Regressions Found: {{ analysis.summary.regressions_found }}
+Generated on {{ timestamp }}
 
-{% if analysis.all_results %}
-
-{% for experiment in analysis.grouped_experiments %}
-## {{ experiment.benchmark }} {% if experiment.has_regression %}**(Has Regression)**{% endif %}
-
-**Parameters:**
-{% for param, value in experiment.parameters.items() %}
-- {{ param }}: {{ value }}
+{% if commit_info %}
+## Commit Information
+{% for key, value in commit_info.items() %}
+- **{{ key }}**: {{ value }}
 {% endfor %}
+{% endif %}
 
-**Performance Results** {% set has_regression = false %}{% for metric in experiment.metrics %}{% for size in experiment.metrics[metric] %}{% if experiment.metrics[metric][size].is_regression %}{% set has_regression = true %}{% endif %}{% endfor %}{% endfor %}{% if has_regression %}**(REGRESSION)**{% endif %}
+## Summary Statistics
 
-```
-                Reference                      |                  Test                      |          Difference (%)
-Message    -------------------------------    |    -------------------------------         |    ----------------------
-Size       Time (us)        Bandwidth (GB/s)  |    Time (us)        Bandwidth (GB/s)       |    Time (us)  Bandwidth (GB/s)
-           avg  min  max    avg  max  min     |    avg  min  max    avg  max  min          |    avg        avg
-{% for size in experiment.metrics[experiment.metrics.keys()|list|first].keys()|sort %}
-{{ "%8d" | format(size|int) }} {% if 'latency_avg' in experiment.metrics %}{{ "%4.2f" | format(experiment.metrics['latency_avg'][size].reference.mean) }}{% else %}{{ "%4s" | format('-') }}{% endif %} {% if 'latency_min' in experiment.metrics %}{{ "%4.2f" | format(experiment.metrics['latency_min'][size].reference.mean) }}{% else %}{{ "%4s" | format('-') }}{% endif %} {% if 'latency_max' in experiment.metrics %}{{ "%4.2f" | format(experiment.metrics['latency_max'][size].reference.mean) }}{% else %}{{ "%4s" | format('-') }}{% endif %} {% if 'bandwidth_avg' in experiment.metrics %}{{ "%4.2f" | format(experiment.metrics['bandwidth_avg'][size].reference.mean) }}{% else %}{{ "%4s" | format('-') }}{% endif %} {% if 'bandwidth_max' in experiment.metrics %}{{ "%4.2f" | format(experiment.metrics['bandwidth_max'][size].reference.mean) }}{% else %}{{ "%4s" | format('-') }}{% endif %} {% if 'bandwidth_min' in experiment.metrics %}{{ "%4.2f" | format(experiment.metrics['bandwidth_min'][size].reference.mean) }}{% else %}{{ "%4s" | format('-') }}{% endif %} | {% if 'latency_avg' in experiment.metrics %}{{ "%4.2f" | format(experiment.metrics['latency_avg'][size].test.mean) }}{% else %}{{ "%4s" | format('-') }}{% endif %} {% if 'latency_min' in experiment.metrics %}{{ "%4.2f" | format(experiment.metrics['latency_min'][size].test.mean) }}{% else %}{{ "%4s" | format('-') }}{% endif %} {% if 'latency_max' in experiment.metrics %}{{ "%4.2f" | format(experiment.metrics['latency_max'][size].test.mean) }}{% else %}{{ "%4s" | format('-') }}{% endif %} {% if 'bandwidth_avg' in experiment.metrics %}{{ "%4.2f" | format(experiment.metrics['bandwidth_avg'][size].test.mean) }}{% else %}{{ "%4s" | format('-') }}{% endif %} {% if 'bandwidth_max' in experiment.metrics %}{{ "%4.2f" | format(experiment.metrics['bandwidth_max'][size].test.mean) }}{% else %}{{ "%4s" | format('-') }}{% endif %} {% if 'bandwidth_min' in experiment.metrics %}{{ "%4.2f" | format(experiment.metrics['bandwidth_min'][size].test.mean) }}{% else %}{{ "%4s" | format('-') }}{% endif %} | {% if 'latency_avg' in experiment.metrics %}{{ "%8.2f" | format(experiment.metrics['latency_avg'][size].latency_pct_change) }}{% else %}{{ "%8s" | format('-') }}{% endif %} {% if 'bandwidth_avg' in experiment.metrics %}{{ "%14.2f" | format(experiment.metrics['bandwidth_avg'][size].bandwidth_pct_change) }}{% else %}{{ "%14s" | format('-') }}{% endif %}
+### Latency Differences
+- Average: {{ "%.2f"|format(summary.avg_latency_diff) }}%
+- Maximum: {{ "%.2f"|format(summary.max_latency_diff) }}%
+- Minimum: {{ "%.2f"|format(summary.min_latency_diff) }}%
+
+### Bandwidth Differences
+- Average: {{ "%.2f"|format(summary.avg_bandwidth_diff) }}%
+- Maximum: {{ "%.2f"|format(summary.max_bandwidth_diff) }}%
+- Minimum: {{ "%.2f"|format(summary.min_bandwidth_diff) }}%
+
+## Detailed Results
+
+{{ table }}
+
+{% if significant_changes %}
+## Significant Changes
+
+| Message Size | Latency Difference (%) | Bandwidth Difference (%) |
+|--------------|------------------------|--------------------------|
+{% for change in significant_changes %}
+| {{ change.msg_size }} | {{ "%.2f"|format(change.latency_diff_pct) }} | {{ "%.2f"|format(change.bandwidth_diff_pct) }} |
 {% endfor %}
-```
-
-{% endfor %}
-
-> **Note**: 
-> - For Bandwidth metrics: Higher values are better
-> - For Latency/Time metrics: Lower values are better
-
-{% else %}
-No results were found. 
 {% endif %} 

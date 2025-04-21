@@ -120,8 +120,7 @@ class BenchmarkRunner:
         benchmark_cmd: str,
         num_processes: int,
         procs_per_node: int,
-        memory_type: MemoryType,
-        message_size: int
+        memory_type: MemoryType
     ) -> str:
         """Generate MPI run command based on benchmark type.
 
@@ -142,7 +141,6 @@ class BenchmarkRunner:
             num_processes,
             procs_per_node,
             memory_type,
-            message_size,
             self.build_dir
         )
 
@@ -152,7 +150,6 @@ class BenchmarkRunner:
         num_processes: int,
         procs_per_node: int,
         memory_type: MemoryType,
-        message_size: int,
         build_dir: Path
     ) -> str:
         """Generate MPI command specifically for UCC perftest.
@@ -162,7 +159,6 @@ class BenchmarkRunner:
             num_processes: Total number of processes
             procs_per_node: Processes per node
             memory_type: Memory type to use
-            message_size: Message size to use
             build_dir: Directory containing built binaries
 
         Returns:
@@ -195,10 +191,7 @@ class BenchmarkRunner:
         if memory_type == MemoryType.CUDA:
             mpi_cmd.extend(["-m", "cuda"])
         
-        if message_size > 0:
-            mpi_cmd.extend(["-b", f"{message_size}", "-e", f"{message_size}"])
-        
-        mpi_cmd.extend(["-n", "10000"]) 
+        # mpi_cmd.extend(["-n", "10000"]) 
 
         return " ".join(mpi_cmd)
 
@@ -410,15 +403,13 @@ class BenchmarkRunner:
         num_processes = cast(int, params["num_processes"])
         procs_per_node = cast(int, params["procs_per_node"])
         memory_type = MemoryType(params["memory_type"])
-        message_size = cast(int, params["msg_size"])
 
         # Generate MPI command
         mpi_cmd = self._generate_mpi_command(
             config.command,
             num_processes,
             procs_per_node,
-            memory_type,
-            message_size
+            memory_type
         )
                 
         logger.info(f"MPI command: {mpi_cmd}")
@@ -442,6 +433,8 @@ class BenchmarkRunner:
         # Parse results using the specified parser
         parser = get_parser(config.parser)
         metrics = parser.parse(stdout, stderr)
+
+        logger.info("Parsed metrics: %s", metrics)
 
         return BenchmarkResult(
             commit_hash=commit_hash,

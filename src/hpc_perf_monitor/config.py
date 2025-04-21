@@ -26,7 +26,6 @@ class BuildConfig(BaseModel):
 class BenchmarkParams(BaseModel):
     """Parameters for benchmark execution."""
     num_processes: List[int] = Field(..., description="Number of processes to test")
-    msg_sizes: List[int] = Field(..., description="Message sizes to test (in bytes)")
     procs_per_node: List[int] = Field(..., description="Processes per node to test")
     memory_types: List[MemoryType] = Field(
         default=[MemoryType.HOST],

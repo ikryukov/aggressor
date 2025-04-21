@@ -20,24 +20,75 @@ A Python service for detecting performance regressions in HPC middleware through
 
 ## Installation
 
+### Quick Install
+
 1. Clone the repository:
    ```bash
    git clone https://github.com/yourusername/hpc-perf-monitor.git
    cd hpc-perf-monitor
    ```
 
-2. Create a virtual environment:
-   ```bash
-   python -m venv venv
-   source venv/bin/activate  # On Linux/macOS
-   # or
-   .\venv\Scripts\activate  # On Windows
-   ```
-
-3. Install dependencies:
+2. Install using pip:
    ```bash
    pip install -e .
    ```
+
+### Development Setup
+
+We use `uv` for fast and reliable Python package management. Here's how to set up your development environment:
+
+1. Install uv (if not already installed):
+   ```bash
+   # On Linux/macOS
+   curl -LsSf https://astral.sh/uv/install.sh | sh
+
+   # On Windows
+   powershell -c "irm https://astral.sh/uv/install.ps1 | iex"
+   ```
+
+2. Create a virtual environment:
+   ```bash
+   uv venv
+   source .venv/bin/activate  # On Linux/macOS
+   # or
+   .\.venv\Scripts\activate  # On Windows
+   ```
+
+3. Install development dependencies:
+   ```bash
+   uv pip install -e .
+   ```
+
+### Development Tools
+
+The project uses modern Python development tools:
+
+- **Ruff**: For linting and code formatting
+  ```bash
+  uv pip install ruff
+  ruff check .
+  ruff format .
+  ```
+
+- **MyPy**: For static type checking
+  ```bash
+  uv pip install mypy
+  mypy .
+  ```
+
+- **Pytest**: For testing
+  ```bash
+  uv pip install pytest pytest-cov
+  pytest
+  ```
+
+### Keeping Dependencies Updated
+
+To update dependencies to their latest compatible versions:
+```bash
+uv pip compile pyproject.toml --upgrade
+uv pip sync requirements.txt
+```
 
 ## Configuration
 

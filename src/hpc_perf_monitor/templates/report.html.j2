@@ -4,474 +4,203 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Performance Analysis Report</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/css/bootstrap.min.css" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <style>
-        /* Catppuccin Mocha Theme Colors */
-        :root {
-            --ctp-rosewater: #f5e0dc;
-            --ctp-flamingo: #f2cdcd;
-            --ctp-pink: #f5c2e7;
-            --ctp-mauve: #cba6f7;
-            --ctp-red: #f38ba8;
-            --ctp-maroon: #eba0ac;
-            --ctp-peach: #fab387;
-            --ctp-yellow: #f9e2af;
-            --ctp-green: #a6e3a1;
-            --ctp-teal: #94e2d5;
-            --ctp-sky: #89dceb;
-            --ctp-sapphire: #74c7ec;
-            --ctp-blue: #89b4fa;
-            --ctp-lavender: #b4befe;
-            --ctp-text: #cdd6f4;
-            --ctp-subtext1: #bac2de;
-            --ctp-subtext0: #a6adc8;
-            --ctp-overlay2: #9399b2;
-            --ctp-overlay1: #7f849c;
-            --ctp-overlay0: #6c7086;
-            --ctp-surface2: #585b70;
-            --ctp-surface1: #45475a;
-            --ctp-surface0: #313244;
-            --ctp-base: #1e1e2e;
-            --ctp-mantle: #181825;
-            --ctp-crust: #11111b;
-        }
-
-        body {
-            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
-            line-height: 1.6;
-            max-width: 1400px;
-            margin: 0 auto;
-            padding: 20px;
-            color: var(--ctp-text);
-            background-color: var(--ctp-base);
-        }
-        
-        h1, h2, h3, h4 {
-            color: var(--ctp-lavender);
-        }
-        
-        .summary {
-            background-color: var(--ctp-surface0);
-            border-radius: 8px;
-            padding: 20px;
-            margin-bottom: 30px;
-        }
-        
-        .experiment-card {
-            background-color: var(--ctp-mantle);
-            border: 1px solid var(--ctp-surface1);
-            border-radius: 8px;
-            padding: 20px;
-            margin-bottom: 30px;
-        }
-        
-        .experiment-card.has-regression {
-            border-left: 4px solid var(--ctp-red);
-        }
-        
-        .parameters {
-            list-style: none;
-            padding: 0;
-            margin-bottom: 20px;
-        }
-        
-        .parameters li {
-            display: inline-block;
-            background-color: var(--ctp-surface1);
-            padding: 5px 10px;
-            border-radius: 3px;
-            margin-right: 10px;
-            margin-bottom: 10px;
-        }
-        
-        .tables-container {
-            display: flex;
-            flex-direction: row;
-            flex-wrap: wrap;
-            gap: 30px;
-            margin-top: 15px;
-            justify-content: space-between;
-        }
-        
-        .table-section {
-            flex: 1;
-            min-width: 380px;
-            margin-bottom: 25px;
-        }
-        
-        .table-title {
-            text-align: center;
-            margin-bottom: 10px;
-            color: var(--ctp-blue);
-            font-weight: bold;
-            font-size: 1.1em;
-        }
-        
-        .performance-table {
+        .chart-container {
+            position: relative;
+            height: 400px;
             width: 100%;
-            border-collapse: collapse;
-            border-radius: 8px;
-            overflow: hidden;
         }
-        
-        .performance-table th, 
-        .performance-table td {
-            padding: 10px 8px;
-            text-align: center;
-            border: 1px solid var(--ctp-surface1);
-            font-size: 0.9em;
-        }
-        
-        .performance-table thead th {
-            background-color: var(--ctp-surface1);
-            color: var(--ctp-text);
-            font-weight: bold;
-        }
-        
-        .performance-table th[colspan] {
-            background-color: var(--ctp-surface2);
-        }
-        
-        .performance-table tbody tr:nth-child(even) {
-            background-color: var(--ctp-surface0);
-        }
-        
-        .performance-table tbody tr:first-child th {
-            text-align: left;
-            padding-left: 15px;
-            background-color: var(--ctp-surface1);
-        }
-        
-        .better {
-            color: var(--ctp-green);
-            font-weight: bold;
-        }
-        
-        .worse {
-            color: var(--ctp-red);
-            font-weight: bold;
-        }
-        
-        .positive-change {
-            background-color: rgba(166, 227, 161, 0.2); /* green with opacity */
-        }
-        
-        .negative-change {
-            background-color: rgba(243, 139, 168, 0.2); /* red with opacity */
-        }
-        
-        .no-results {
-            background-color: var(--ctp-surface0);
-            border-radius: 8px;
-            padding: 20px;
-            margin-bottom: 30px;
-        }
-        
-        code {
-            background-color: var(--ctp-surface0);
-            padding: 2px 4px;
-            border-radius: 4px;
-            font-family: SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
-            color: var(--ctp-sky);
-        }
-        
-        .regression-badge {
-            display: inline-block;
-            background-color: var(--ctp-red);
-            color: var(--ctp-mantle);
-            padding: 3px 8px;
-            border-radius: 4px;
-            font-size: 0.8em;
-            margin-left: 10px;
-            vertical-align: middle;
-        }
-        
-        .section-nav {
-            background-color: var(--ctp-surface0);
-            padding: 10px;
-            border-radius: 8px;
+        .summary-card {
             margin-bottom: 20px;
-        }
-        
-        .section-nav ul {
-            list-style: none;
-            padding: 0;
-            margin: 0;
-            display: flex;
-            flex-wrap: wrap;
-            gap: 10px;
-        }
-        
-        .section-nav li {
-            display: inline-block;
-        }
-        
-        .section-nav a {
-            display: inline-block;
-            padding: 5px 10px;
-            background-color: var(--ctp-surface1);
-            border-radius: 4px;
-            color: var(--ctp-text);
-            text-decoration: none;
-        }
-        
-        .section-nav a:hover {
-            background-color: var(--ctp-surface2);
-        }
-
-        .metric-info {
-            margin-top: 10px;
-            font-size: 0.9em;
-            color: var(--ctp-subtext0);
-            text-align: center;
-        }
-        
-        /* Add more spacing and padding for readability */
-        @media (min-width: 1200px) {
-            .tables-container {
-                gap: 40px;
-            }
-            
-            .table-section {
-                flex: 1;
-                min-width: 30%;
-            }
         }
     </style>
 </head>
 <body>
-    <h1>Performance Analysis Report</h1>
+    <div class="container mt-4">
+        <h1>Performance Analysis Report</h1>
+        <p class="text-muted">Generated on {{ timestamp }}</p>
 
-    <div class="summary">
-        <h2>Summary</h2>
-        <ul>
-            <li>Reference Commit: <code>{{ analysis.summary.ref_commit }}</code></li>
-            <li>Test Commit: <code>{{ analysis.summary.test_commit }}</code></li>
-            <li>Total Comparisons: {{ analysis.summary.total_comparisons }}</li>
-            <li>Regressions Found: {{ analysis.summary.regressions_found }}</li>
-        </ul>
-    </div>
-    
-    {% if analysis.all_results %}
-    
-    <div class="section-nav">
-        <h3>Quick Navigation</h3>
-        <ul>
-            {% for experiment in analysis.grouped_experiments %}
-            <li><a href="#{{ experiment.benchmark }}-{{ loop.index }}">{{ experiment.benchmark }}</a></li>
-            {% endfor %}
-        </ul>
-    </div>
-    
-    {% for experiment in analysis.grouped_experiments %}
-    <div id="{{ experiment.benchmark }}-{{ loop.index }}" class="experiment-card {% if experiment.has_regression %}has-regression{% endif %}">
-        <h2>{{ experiment.benchmark }}</h2>
-        
-        <ul class="parameters">
-            {% for param, value in experiment.parameters.items() %}
-            <li>{{ param }}: {{ value }}</li>
-            {% endfor %}
-        </ul>
-        
-        <div class="tables-container">
-            <!-- Reference Table -->
-            <div class="table-section">
-                <div class="table-title">Reference ({{ analysis.summary.ref_commit }})</div>
-                <table class="performance-table">
-                    <thead>
-                        <tr>
-                            <th rowspan="2">Message Size</th>
-                            <th colspan="3">Time, us</th>
-                            <th colspan="3">Bandwidth, GB/s</th>
-                        </tr>
-                        <tr>
-                            <th>avg</th>
-                            <th>min</th>
-                            <th>max</th>
-                            <th>avg</th>
-                            <th>max</th>
-                            <th>min</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        {% for size in experiment.metrics[experiment.metrics.keys()|list|first].keys()|sort %}
-                        <tr>
-                            <th>{{ size }}</th>
-                            <!-- Time metrics (latency) -->
-                            {% if 'latency_avg' in experiment.metrics %}
-                                <td>{{ experiment.metrics['latency_avg'][size].reference.mean|round(2) }}</td>
-                            {% else %}
-                                <td>-</td>
-                            {% endif %}
-                            
-                            {% if 'latency_min' in experiment.metrics %}
-                                <td>{{ experiment.metrics['latency_min'][size].reference.mean|round(2) }}</td>
-                            {% else %}
-                                <td>-</td>
-                            {% endif %}
-                            
-                            {% if 'latency_max' in experiment.metrics %}
-                                <td>{{ experiment.metrics['latency_max'][size].reference.mean|round(2) }}</td>
-                            {% else %}
-                                <td>-</td>
-                            {% endif %}
-                            
-                            <!-- Bandwidth metrics -->
-                            {% if 'bandwidth_avg' in experiment.metrics %}
-                                <td>{{ experiment.metrics['bandwidth_avg'][size].reference.mean|round(2) }}</td>
-                            {% else %}
-                                <td>-</td>
-                            {% endif %}
-                            
-                            {% if 'bandwidth_max' in experiment.metrics %}
-                                <td>{{ experiment.metrics['bandwidth_max'][size].reference.mean|round(2) }}</td>
-                            {% else %}
-                                <td>-</td>
-                            {% endif %}
-                            
-                            {% if 'bandwidth_min' in experiment.metrics %}
-                                <td>{{ experiment.metrics['bandwidth_min'][size].reference.mean|round(2) }}</td>
-                            {% else %}
-                                <td>-</td>
-                            {% endif %}
-                        </tr>
-                        {% endfor %}
-                    </tbody>
-                </table>
+        {% if commit_info %}
+        <div class="card summary-card">
+            <div class="card-header">
+                <h5>Commit Information</h5>
             </div>
-            
-            <!-- Test Table -->
-            <div class="table-section">
-                <div class="table-title">Test ({{ analysis.summary.test_commit }})</div>
-                <table class="performance-table">
-                    <thead>
-                        <tr>
-                            <th rowspan="2">Message Size</th>
-                            <th colspan="3">Time, us</th>
-                            <th colspan="3">Bandwidth, GB/s</th>
-                        </tr>
-                        <tr>
-                            <th>avg</th>
-                            <th>min</th>
-                            <th>max</th>
-                            <th>avg</th>
-                            <th>max</th>
-                            <th>min</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        {% for size in experiment.metrics[experiment.metrics.keys()|list|first].keys()|sort %}
-                        <tr>
-                            <th>{{ size }}</th>
-                            <!-- Time metrics (latency) -->
-                            {% if 'latency_avg' in experiment.metrics %}
-                                <td>{{ experiment.metrics['latency_avg'][size].test.mean|round(2) }}</td>
-                            {% else %}
-                                <td>-</td>
-                            {% endif %}
-                            
-                            {% if 'latency_min' in experiment.metrics %}
-                                <td>{{ experiment.metrics['latency_min'][size].test.mean|round(2) }}</td>
-                            {% else %}
-                                <td>-</td>
-                            {% endif %}
-                            
-                            {% if 'latency_max' in experiment.metrics %}
-                                <td>{{ experiment.metrics['latency_max'][size].test.mean|round(2) }}</td>
-                            {% else %}
-                                <td>-</td>
-                            {% endif %}
-                            
-                            <!-- Bandwidth metrics -->
-                            {% if 'bandwidth_avg' in experiment.metrics %}
-                                <td>{{ experiment.metrics['bandwidth_avg'][size].test.mean|round(2) }}</td>
-                            {% else %}
-                                <td>-</td>
-                            {% endif %}
-                            
-                            {% if 'bandwidth_max' in experiment.metrics %}
-                                <td>{{ experiment.metrics['bandwidth_max'][size].test.mean|round(2) }}</td>
-                            {% else %}
-                                <td>-</td>
-                            {% endif %}
-                            
-                            {% if 'bandwidth_min' in experiment.metrics %}
-                                <td>{{ experiment.metrics['bandwidth_min'][size].test.mean|round(2) }}</td>
-                            {% else %}
-                                <td>-</td>
-                            {% endif %}
-                        </tr>
-                        {% endfor %}
-                    </tbody>
-                </table>
-            </div>
-            
-            <!-- Difference Table -->
-            <div class="table-section">
-                <div class="table-title">Difference (%)</div>
-                <table class="performance-table">
-                    <thead>
-                        <tr>
-                            <th rowspan="2">Message Size</th>
-                            <th colspan="3">Time, us</th>
-                            <th colspan="3">Bandwidth, GB/s</th>
-                        </tr>
-                        <tr>
-                            <th>avg</th>
-                            <th>min</th>
-                            <th>max</th>
-                            <th>avg</th>
-                            <th>max</th>
-                            <th>min</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        {% for size in experiment.metrics[experiment.metrics.keys()|list|first].keys()|sort %}
-                        <tr>
-                            <th>{{ size }}</th>
-                            
-                            <!-- Time metrics (latency) differences -->
-                            {% if 'latency_avg' in experiment.metrics %}
-                                <td class="{% if experiment.metrics['latency_avg'][size].latency_pct_change < 0 %}positive-change better{% elif experiment.metrics['latency_avg'][size].latency_pct_change > 0 %}negative-change worse{% endif %}">
-                                    {{ experiment.metrics['latency_avg'][size].latency_pct_change|round(2) }}%
-                                </td>
-                            {% else %}
-                                <td>-</td>
-                            {% endif %}
-                            
-                            <!-- No percentage for min/max -->
-                            <td>-</td>
-                            <td>-</td>
-                            
-                            <!-- Bandwidth metrics differences -->
-                            {% if 'bandwidth_avg' in experiment.metrics %}
-                                <td class="{% if experiment.metrics['bandwidth_avg'][size].bandwidth_pct_change > 0 %}positive-change better{% elif experiment.metrics['bandwidth_avg'][size].bandwidth_pct_change < 0 %}negative-change worse{% endif %}">
-                                    {{ experiment.metrics['bandwidth_avg'][size].bandwidth_pct_change|round(2) }}%
-                                </td>
-                            {% else %}
-                                <td>-</td>
-                            {% endif %}
-                            
-                            <!-- No percentage for min/max -->
-                            <td>-</td>
-                            <td>-</td>
-                        </tr>
-                        {% endfor %}
-                    </tbody>
-                </table>
+            <div class="card-body">
+                <ul class="list-unstyled">
+                    {% for key, value in commit_info.items() %}
+                    <li><strong>{{ key }}:</strong> {{ value }}</li>
+                    {% endfor %}
+                </ul>
             </div>
         </div>
-        
-        <div class="metric-info">
-            <p>For Bandwidth metrics: <span class="better">Higher values are better</span></p>
-            <p>For Latency/Time metrics: <span class="worse">Lower values are better</span></p>
+        {% endif %}
+
+        <div class="card summary-card">
+            <div class="card-header">
+                <h5>Summary Statistics</h5>
+            </div>
+            <div class="card-body">
+                <div class="row">
+                    <div class="col-md-6">
+                        <h6>Latency Differences</h6>
+                        <ul>
+                            <li>Average: {{ "%.2f"|format(summary.avg_latency_diff) }}%</li>
+                            <li>Maximum: {{ "%.2f"|format(summary.max_latency_diff) }}%</li>
+                            <li>Minimum: {{ "%.2f"|format(summary.min_latency_diff) }}%</li>
+                        </ul>
+                    </div>
+                    <div class="col-md-6">
+                        <h6>Bandwidth Differences</h6>
+                        <ul>
+                            <li>Average: {{ "%.2f"|format(summary.avg_bandwidth_diff) }}%</li>
+                            <li>Maximum: {{ "%.2f"|format(summary.max_bandwidth_diff) }}%</li>
+                            <li>Minimum: {{ "%.2f"|format(summary.min_bandwidth_diff) }}%</li>
+                        </ul>
+                    </div>
+                </div>
+            </div>
         </div>
+
+        <div class="card summary-card">
+            <div class="card-header">
+                <h5>Latency Analysis</h5>
+            </div>
+            <div class="card-body">
+                <div class="chart-container">
+                    <canvas id="latencyChart"></canvas>
+                </div>
+            </div>
+        </div>
+
+        <div class="card summary-card">
+            <div class="card-header">
+                <h5>Bandwidth Analysis</h5>
+            </div>
+            <div class="card-body">
+                <div class="chart-container">
+                    <canvas id="bandwidthChart"></canvas>
+                </div>
+            </div>
+        </div>
+
+        <div class="card summary-card">
+            <div class="card-header">
+                <h5>Detailed Results</h5>
+            </div>
+            <div class="card-body">
+                {{ table|safe }}
+            </div>
+        </div>
+
+        {% if significant_changes %}
+        <div class="card summary-card">
+            <div class="card-header">
+                <h5>Significant Changes</h5>
+            </div>
+            <div class="card-body">
+                <div class="table-responsive">
+                    <table class="table table-striped">
+                        <thead>
+                            <tr>
+                                <th>Message Size</th>
+                                <th>Latency Difference (%)</th>
+                                <th>Bandwidth Difference (%)</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for change in significant_changes %}
+                            <tr>
+                                <td>{{ change.msg_size }}</td>
+                                <td>{{ "%.2f"|format(change.latency_diff_pct) }}</td>
+                                <td>{{ "%.2f"|format(change.bandwidth_diff_pct) }}</td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+        {% endif %}
     </div>
-    {% endfor %}
-    
-    {% else %}
-    <div class="no-results">
-        <p>No results were found.</p>
-    </div>
-    {% endif %}
+
+    <script>
+        // Latency Chart
+        new Chart(document.getElementById('latencyChart'), {
+            type: 'line',
+            data: {
+                labels: {{ charts.latency.msg_sizes|tojson }},
+                datasets: [{
+                    label: 'Reference Latency',
+                    data: {{ charts.latency.ref_latency|tojson }},
+                    borderColor: 'rgb(75, 192, 192)',
+                    tension: 0.1
+                }, {
+                    label: 'Test Latency',
+                    data: {{ charts.latency.test_latency|tojson }},
+                    borderColor: 'rgb(255, 99, 132)',
+                    tension: 0.1
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                scales: {
+                    y: {
+                        beginAtZero: true,
+                        title: {
+                            display: true,
+                            text: 'Latency (μs)'
+                        }
+                    },
+                    x: {
+                        title: {
+                            display: true,
+                            text: 'Message Size (bytes)'
+                        }
+                    }
+                }
+            }
+        });
+
+        // Bandwidth Chart
+        new Chart(document.getElementById('bandwidthChart'), {
+            type: 'line',
+            data: {
+                labels: {{ charts.bandwidth.msg_sizes|tojson }},
+                datasets: [{
+                    label: 'Reference Bandwidth',
+                    data: {{ charts.bandwidth.ref_bandwidth|tojson }},
+                    borderColor: 'rgb(75, 192, 192)',
+                    tension: 0.1
+                }, {
+                    label: 'Test Bandwidth',
+                    data: {{ charts.bandwidth.test_bandwidth|tojson }},
+                    borderColor: 'rgb(255, 99, 132)',
+                    tension: 0.1
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                scales: {
+                    y: {
+                        beginAtZero: true,
+                        title: {
+                            display: true,
+                            text: 'Bandwidth (MB/s)'
+                        }
+                    },
+                    x: {
+                        title: {
+                            display: true,
+                            text: 'Message Size (bytes)'
+                        }
+                    }
+                }
+            }
+        });
+    </script>
 </body>
 </html> 

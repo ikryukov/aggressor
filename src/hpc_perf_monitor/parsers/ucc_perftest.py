@@ -50,7 +50,7 @@ class UCCPerftestParser:
         
         return False, []
 
-    def parse(self, stdout: str, stderr: str) -> Dict[str, float]:
+    def parse(self, stdout: str, stderr: str) -> Dict[str, Dict[str, float]]:
         """Parse benchmark output and extract metrics.
         
         Args:
@@ -58,33 +58,36 @@ class UCCPerftestParser:
             stderr: Standard error from benchmark
             
         Returns:
-            Dictionary containing extracted metrics
+            Dictionary containing extracted metrics, organized by message size
             
-        The returned metrics include:
-        - count: Number of iterations
-        - msg_size: Message size in bytes
-        - latency_avg: Average latency in microseconds
-        - latency_min: Minimum latency in microseconds
-        - latency_max: Maximum latency in microseconds
-        - bandwidth_avg: Average bandwidth in GB/s
-        - bandwidth_min: Minimum bandwidth in GB/s
-        - bandwidth_max: Maximum bandwidth in GB/s
+        The returned structure is a dictionary where:
+        - Key: Message size in bytes
+        - Value: Dictionary of metrics for that message size containing:
+          - count: Number of elements
+          - msg_size: Message size in bytes
+          - latency_avg: Average latency in microseconds
+          - latency_min: Minimum latency in microseconds
+          - latency_max: Maximum latency in microseconds
+          - bandwidth_avg: Average bandwidth in GB/s
+          - bandwidth_min: Minimum bandwidth in GB/s
+          - bandwidth_max: Maximum bandwidth in GB/s
         """
         logger.info("Starting to parse benchmark output")
         if stderr:
             logger.warning("Stderr is not empty: %s", stderr)
             
-        metrics = {}
+        results = {}
         lines_processed = 0
         
         for line in stdout.split('\n'):
             lines_processed += 1
             is_data, values = self._extract_metrics_line(line)
             if is_data:
-                logger.info("Found valid data line at line %d", lines_processed)
+                logger.debug("Found valid data line at line %d", lines_processed)
+                msg_size = float(values[1])
                 metrics = {
                     'count': float(values[0]),
-                    'msg_size': float(values[1]),
+                    'msg_size': msg_size,
                     'latency_avg': float(values[2]),
                     'latency_min': float(values[3]),
                     'latency_max': float(values[4]),
@@ -93,15 +96,13 @@ class UCCPerftestParser:
                     'bandwidth_min': float(values[7])
                 }
                 logger.debug("Extracted metrics: %s", metrics)
-                break  # Take the first valid data line
+                results[msg_size] = metrics
         
-        if not metrics:
+        if not results:
             logger.warning("No valid data lines found in output after processing %d lines", 
                          lines_processed)
         else:
-            logger.info("Successfully parsed benchmark results: count=%d, msg_size=%d, "
-                       "latency_avg=%.2f, bandwidth_avg=%.2f", 
-                       metrics['count'], metrics['msg_size'], 
-                       metrics['latency_avg'], metrics['bandwidth_avg'])
+            logger.info("Successfully parsed benchmark results with %d different message sizes", 
+                      len(results))
                 
-        return metrics 
+        return results 
