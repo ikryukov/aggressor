@@ -4,7 +4,6 @@ import asyncio
 import logging
 import shutil
 from pathlib import Path
-from typing import Dict, List, Optional
 
 import typer
 import yaml
@@ -14,7 +13,7 @@ from rich.logging import RichHandler
 from .benchmark_runner import BenchmarkRunner
 from .build_manager import BuildManager
 from .config import ProjectConfig
-from .git_manager import GitManager, CommitInfo
+from .git_manager import GitManager
 from .metrics_analyzer import MetricsAnalyzer
 from .report_generator import ReportGenerator
 
@@ -56,7 +55,7 @@ async def run_benchmarks(
     build_manager: BuildManager,
     config: ProjectConfig,
     commit_hash: str
-) -> List[dict]:
+) -> list[dict]:
     """Run benchmarks for a specific commit.
 
     Args:

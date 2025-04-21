@@ -3,9 +3,7 @@
 import asyncio
 import logging
 import os
-import shutil
 from pathlib import Path
-from typing import Dict, Optional
 
 from .config import BuildConfig
 
@@ -16,7 +14,7 @@ logger = logging.getLogger(__name__)
 class BuildError(Exception):
     """Exception raised for build-related errors."""
 
-    def __init__(self, message: str, stdout: Optional[str] = None, stderr: Optional[str] = None):
+    def __init__(self, message: str, stdout: str | None = None, stderr: str | None = None):
         """Initialize BuildError.
 
         Args:
@@ -41,7 +39,7 @@ class BuildManager:
         self.config = build_config
         self.config.build_dir.mkdir(parents=True, exist_ok=True)
 
-    async def _run_command(self, cmd: str, cwd: Path, env: Optional[Dict[str, str]] = None) -> None:
+    async def _run_command(self, cmd: str, cwd: Path, env: dict[str, str] | None = None) -> None:
         """Run a shell command asynchronously.
 
         Args:
@@ -170,9 +168,9 @@ class BuildManager:
             # shutil.rmtree(build_dir, ignore_errors=True)
             raise
         except Exception as e:
-            logger.error(f"Unexpected error during build: {str(e)}", exc_info=True)
+            logger.error(f"Unexpected error during build: {e!s}", exc_info=True)
             # shutil.rmtree(build_dir, ignore_errors=True)
-            raise BuildError(f"Unexpected error during build: {str(e)}")
+            raise BuildError(f"Unexpected error during build: {e!s}")
 
     async def cleanup(self) -> None:
         """Clean up build directories."""

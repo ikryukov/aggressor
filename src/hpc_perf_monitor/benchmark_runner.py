@@ -1,20 +1,18 @@
 """Benchmark execution management."""
 
 import asyncio
-import json
 import logging
 import tempfile
 from dataclasses import dataclass
 from datetime import datetime
 from enum import Enum
 from pathlib import Path
-from typing import Dict, List, Optional, Protocol, Tuple, Union, cast
+from typing import Protocol, cast
 
 from jinja2 import Environment, FileSystemLoader
 
 from .config import BenchmarkConfig, MemoryType, SlurmConfig
 from .parsers import get_parser
-
 
 logger = logging.getLogger(__name__)
 
@@ -24,9 +22,9 @@ class BenchmarkResult:
     """Container for benchmark results."""
     commit_hash: str
     benchmark_name: str
-    parameters: Dict[str, Union[int, str]]
-    metrics: Dict[str, float]
-    metrics_watch: List[str]
+    parameters: dict[str, int | str]
+    metrics: dict[str, float]
+    metrics_watch: list[str]
     timestamp: datetime
     stdout: str
     stderr: str
@@ -78,7 +76,7 @@ class BenchmarkRunner:
         self.env = Environment(loader=FileSystemLoader(Path(__file__).parent / "templates"))
         
         # Register command generators for different benchmark types
-        self._command_generators: Dict[BenchmarkType, MPICommandGenerator] = {
+        self._command_generators: dict[BenchmarkType, MPICommandGenerator] = {
             BenchmarkType.UCC_PERFTEST: self._generate_ucc_perftest_command,
             BenchmarkType.OSU: self._generate_osu_command,
             BenchmarkType.DEFAULT: self._generate_default_mpi_command
@@ -309,7 +307,7 @@ class BenchmarkRunner:
             mpi_cmd=mpi_cmd
         )
 
-    async def _run_local(self, cmd: str) -> Tuple[str, str, int]:
+    async def _run_local(self, cmd: str) -> tuple[str, str, int]:
         """Run command locally.
 
         Args:
@@ -330,7 +328,7 @@ class BenchmarkRunner:
         self,
         script_content: str,
         job_name: str
-    ) -> Tuple[str, str, int]:
+    ) -> tuple[str, str, int]:
         """Submit and monitor Slurm job.
 
         Args:
@@ -386,7 +384,7 @@ class BenchmarkRunner:
         self,
         commit_hash: str,
         config: BenchmarkConfig,
-        params: Dict[str, Union[int, str]]
+        params: dict[str, int | str]
     ) -> BenchmarkResult:
         """Run a benchmark with specific parameters.
 

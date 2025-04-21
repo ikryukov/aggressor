@@ -1,11 +1,9 @@
 """Git repository management functionality."""
 
-import asyncio
 import shutil
 from dataclasses import dataclass
 from datetime import datetime
 from pathlib import Path
-from typing import Dict, List, Optional
 
 from git import Repo
 from git.exc import GitCommandError
@@ -87,7 +85,7 @@ class GitManager:
             shutil.rmtree(source_dir, ignore_errors=True)
             raise GitCommandError(f"Failed to prepare commit {commit_hash}", e.status, e.stderr)
 
-    async def validate_commits(self, commits: List[str]) -> Dict[str, CommitInfo]:
+    async def validate_commits(self, commits: list[str]) -> dict[str, CommitInfo]:
         """Validate that all commits exist in the repository and collect detailed information.
 
         Args:
@@ -127,14 +125,14 @@ class GitManager:
                     commit_info_dict[commit_obj.hexsha] = info
                     
                 except GitCommandError as e:
-                    raise ValueError(f"Invalid commit reference: {commit_ref}. Error: {str(e)}")
+                    raise ValueError(f"Invalid commit reference: {commit_ref}. Error: {e!s}")
 
             return commit_info_dict
 
         finally:
             shutil.rmtree(temp_dir, ignore_errors=True)
 
-    async def get_commits_between(self, good_commit: str, bad_commit: str) -> List[CommitInfo]:
+    async def get_commits_between(self, good_commit: str, bad_commit: str) -> list[CommitInfo]:
         """Get list of commits between two commits in chronological order.
 
         Args:
@@ -182,7 +180,7 @@ class GitManager:
             return commit_info_list
             
         except GitCommandError as e:
-            raise RuntimeError(f"Failed to get commits between {good_commit} and {bad_commit}: {str(e)}")
+            raise RuntimeError(f"Failed to get commits between {good_commit} and {bad_commit}: {e!s}")
         finally:
             shutil.rmtree(temp_dir, ignore_errors=True)
 
@@ -205,11 +203,11 @@ class GitManager:
                 commit = repo.commit(commit_hash)
                 return datetime.fromtimestamp(commit.committed_date)
             except GitCommandError as e:
-                raise RuntimeError(f"Failed to get commit date for {commit_hash}: {str(e)}")
+                raise RuntimeError(f"Failed to get commit date for {commit_hash}: {e!s}")
         finally:
             shutil.rmtree(temp_dir, ignore_errors=True)
 
-    async def get_commit_range_info(self, start: str, end: str) -> Dict[str, CommitInfo]:
+    async def get_commit_range_info(self, start: str, end: str) -> dict[str, CommitInfo]:
         """Get detailed information about a range of commits.
         
         This function gets all commits between start and end (inclusive of both),
@@ -242,7 +240,7 @@ class GitManager:
                 commit_range = f"{start_commit.hexsha}^..{end_commit.hexsha}"
                 commits = list(repo.iter_commits(commit_range))
             except GitCommandError as e:
-                raise ValueError(f"Invalid commit reference: {start} or {end}. Error: {str(e)}")
+                raise ValueError(f"Invalid commit reference: {start} or {end}. Error: {e!s}")
             
             # Create dictionary of commit info
             commit_info_dict = {}
@@ -303,7 +301,7 @@ class GitManager:
                 return info
                 
             except GitCommandError as e:
-                raise ValueError(f"Invalid commit reference: {commit_ref}. Error: {str(e)}")
+                raise ValueError(f"Invalid commit reference: {commit_ref}. Error: {e!s}")
 
         except GitCommandError as e:
             raise GitCommandError(f"Failed to get info for commit {commit_ref}", 
@@ -339,6 +337,6 @@ class GitManager:
                 commit = repo.commit(commit_ref)
                 return commit.hexsha
             except GitCommandError as e:
-                raise RuntimeError(f"Failed to resolve commit reference {commit_ref}: {str(e)}")
+                raise RuntimeError(f"Failed to resolve commit reference {commit_ref}: {e!s}")
         finally:
             shutil.rmtree(temp_dir, ignore_errors=True) 

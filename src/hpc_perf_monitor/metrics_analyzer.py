@@ -1,12 +1,9 @@
 """Performance metrics analysis functionality."""
 
-import json
 import logging
-from dataclasses import dataclass, asdict
-from pathlib import Path
-from typing import Dict, List, Optional, Tuple, Any
+from dataclasses import dataclass
+from typing import Any
 
-import numpy as np
 import pandas as pd
 
 from .benchmark_runner import BenchmarkResult
@@ -19,9 +16,9 @@ logger = logging.getLogger(__name__)
 class AnalysisResult:
     """Result of benchmark analysis."""
     name: str
-    parameters: Dict[str, Any]
+    parameters: dict[str, Any]
     data: pd.DataFrame
-    significant_changes: Dict[str, List[Dict[str, Any]]]  # Dictionary of metric name to list of significant changes
+    significant_changes: dict[str, list[dict[str, Any]]]  # Dictionary of metric name to list of significant changes
     has_regression: bool  # Flag indicating if any regression was found
 
 class MetricsAnalyzer:
@@ -121,9 +118,9 @@ class MetricsAnalyzer:
 
     def analyze_results(
         self,
-        ref_results: List[BenchmarkResult],
-        test_results: List[BenchmarkResult]
-    ) -> List[AnalysisResult]:
+        ref_results: list[BenchmarkResult],
+        test_results: list[BenchmarkResult]
+    ) -> list[AnalysisResult]:
         """Analyze benchmark results and calculate performance differences.
 
         Args:
@@ -134,7 +131,7 @@ class MetricsAnalyzer:
             List of AnalysisResult containing comparison results with percentage differences
         """
         analysis_results = []
-        for ref_result, test_result in zip(ref_results, test_results):
+        for ref_result, test_result in zip(ref_results, test_results, strict=False):
             analysis_results.append(self._process_result(ref_result, test_result))
 
         return analysis_results

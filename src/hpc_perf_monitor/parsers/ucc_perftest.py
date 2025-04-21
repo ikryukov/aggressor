@@ -2,7 +2,6 @@
 
 import logging
 import re
-from typing import Dict, List, Tuple
 
 logger = logging.getLogger(__name__)
 
@@ -14,7 +13,7 @@ class UCCPerftestParser:
     """
     
     @staticmethod
-    def _extract_metrics_line(line: str) -> Tuple[bool, List[str]]:
+    def _extract_metrics_line(line: str) -> tuple[bool, list[str]]:
         """Extract metrics from a line if it contains numeric data.
         
         Args:
@@ -50,7 +49,7 @@ class UCCPerftestParser:
         
         return False, []
 
-    def parse(self, stdout: str, stderr: str) -> Dict[int, Dict[str, float]]:
+    def parse(self, stdout: str, stderr: str) -> dict[int, dict[str, float]]:
         """Parse benchmark output and extract metrics.
         
         Args:
@@ -76,7 +75,7 @@ class UCCPerftestParser:
         if stderr:
             logger.warning("Stderr is not empty: %s", stderr)
             
-        results: Dict[int, Dict[str, float]] = {}
+        results: dict[int, dict[str, float]] = {}
         lines_processed = 0
         
         for line in stdout.split('\n'):

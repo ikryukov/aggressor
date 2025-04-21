@@ -12,7 +12,7 @@ logger = logging.getLogger(__name__)
 class BenchmarkParser(Protocol):
     """Protocol defining the interface for benchmark parsers."""
     
-    def parse(self, stdout: str, stderr: str) -> Dict[str, float]:
+    def parse(self, stdout: str, stderr: str) -> dict[str, float]:
         """Parse benchmark output and extract metrics.
         
         Args:
@@ -26,7 +26,7 @@ class BenchmarkParser(Protocol):
 
 
 # Registry of available parsers
-PARSERS: Dict[str, Type[BenchmarkParser]] = {
+PARSERS: dict[str, type[BenchmarkParser]] = {
     'ucc_perftest': UCCPerftestParser,
     'osu_bench': OSUBenchParser
 }

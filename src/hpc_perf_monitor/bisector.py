@@ -3,7 +3,6 @@
 import asyncio
 import logging
 from pathlib import Path
-from typing import Dict, List, Optional
 
 import typer
 from rich.console import Console
@@ -61,7 +60,7 @@ def run_bisect(
             good_info = commit_info_dict[good_commit]
             bad_info = commit_info_dict[bad_commit]
             
-            logger.info(f"Starting bisect between:")
+            logger.info("Starting bisect between:")
             logger.info(f"Good commit: {good_info.short_hash} ({good_info.date.strftime('%Y-%m-%d')}, {good_info.message[:30]}...)")
             logger.info(f"Bad commit: {bad_info.short_hash} ({bad_info.date.strftime('%Y-%m-%d')}, {bad_info.message[:30]}...)")
             

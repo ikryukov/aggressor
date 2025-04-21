@@ -1,14 +1,14 @@
 """Report generation functionality."""
 
 import json
-import numpy as np
-import pandas as pd
 import logging
-from pathlib import Path
-from typing import Dict, List, Optional, Any, Tuple, Union
 from datetime import datetime
+from pathlib import Path
+from typing import Any
 
+import pandas as pd
 from jinja2 import Environment, FileSystemLoader
+
 from .metrics_analyzer import AnalysisResult
 
 logger = logging.getLogger(__name__)
@@ -68,10 +68,10 @@ class ReportGenerator:
 
     def generate_report(
         self,
-        analysis: List[AnalysisResult],
+        analysis: list[AnalysisResult],
         output_file: Path,
         format: str = "markdown",
-        commit_info: Optional[Dict] = None
+        commit_info: dict | None = None
     ) -> None:
         """Generate report in specified format.
 
@@ -93,7 +93,7 @@ class ReportGenerator:
         else:
             raise ValueError(f"Unsupported report format: {format}")
 
-    def generate_markdown(self, analysis: List[AnalysisResult], output_file: Path, commit_info: Optional[Dict] = None) -> None:
+    def generate_markdown(self, analysis: list[AnalysisResult], output_file: Path, commit_info: dict | None = None) -> None:
         """Generate markdown report.
 
         Args:
@@ -127,7 +127,7 @@ class ReportGenerator:
         with open(output_file, "w") as f:
             f.write(template.render(**report_data))
 
-    def generate_html(self, analysis: List[AnalysisResult], output_file: Path, commit_info: Optional[Dict] = None) -> None:
+    def generate_html(self, analysis: list[AnalysisResult], output_file: Path, commit_info: dict | None = None) -> None:
         """Generate HTML report.
 
         Args:
@@ -166,7 +166,7 @@ class ReportGenerator:
         with open(output_file, "w") as f:
             f.write(template.render(**report_data))
 
-    def generate_json(self, analysis: List[AnalysisResult], output_file: Path, commit_info: Optional[Dict] = None) -> None:
+    def generate_json(self, analysis: list[AnalysisResult], output_file: Path, commit_info: dict | None = None) -> None:
         """Generate JSON report.
 
         Args:
@@ -194,7 +194,7 @@ class ReportGenerator:
         with open(output_file, "w") as f:
             json.dump(report_data, f, indent=2)
 
-    def _generate_summary(self, analysis: pd.DataFrame) -> Dict[str, Any]:
+    def _generate_summary(self, analysis: pd.DataFrame) -> dict[str, Any]:
         """Generate summary statistics from analysis data.
 
         Args:
@@ -220,7 +220,7 @@ class ReportGenerator:
             
         return summary
 
-    def _get_significant_changes(self, analysis: pd.DataFrame, threshold: float = 1.0) -> List[Dict[str, Any]]:
+    def _get_significant_changes(self, analysis: pd.DataFrame, threshold: float = 1.0) -> list[dict[str, Any]]:
         """Get significant changes exceeding threshold.
 
         Args:
@@ -242,7 +242,7 @@ class ReportGenerator:
         
         return significant.to_dict(orient="records")
 
-    def _generate_latency_chart_data(self, analysis: pd.DataFrame) -> Dict[str, List[float]]:
+    def _generate_latency_chart_data(self, analysis: pd.DataFrame) -> dict[str, list[float]]:
         """Generate data for latency chart.
 
         Args:
@@ -258,7 +258,7 @@ class ReportGenerator:
             "diff_pct": analysis["latency_avg_diff_pct"].tolist()
         }
 
-    def _generate_bandwidth_chart_data(self, analysis: pd.DataFrame) -> Dict[str, List[float]]:
+    def _generate_bandwidth_chart_data(self, analysis: pd.DataFrame) -> dict[str, list[float]]:
         """Generate data for bandwidth chart.
 
         Args:

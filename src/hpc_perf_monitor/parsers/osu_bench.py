@@ -2,7 +2,6 @@
 
 import logging
 import re
-from typing import Dict, List, Optional, Tuple
 
 logger = logging.getLogger(__name__)
 
@@ -16,7 +15,7 @@ class OSUBenchParser:
     of size and latency values.
     """
     
-    def _extract_data_line(self, line: str) -> Tuple[bool, Optional[Dict[str, float]]]:
+    def _extract_data_line(self, line: str) -> tuple[bool, dict[str, float] | None]:
         """Extract metrics from a line if it contains valid OSU benchmark data.
         
         Args:
@@ -61,7 +60,7 @@ class OSUBenchParser:
             logger.debug(f"Skipping line, not a data row: {e}")
             return False, None
     
-    def parse(self, stdout: str, stderr: str) -> Dict[int, Dict[str, float]]:
+    def parse(self, stdout: str, stderr: str) -> dict[int, dict[str, float]]:
         """Parse benchmark output and extract metrics.
         
         Args:
@@ -85,7 +84,7 @@ class OSUBenchParser:
         if stderr:
             logger.warning("Stderr is not empty: %s", stderr)
             
-        metrics_by_size: Dict[int, Dict[str, float]] = {}
+        metrics_by_size: dict[int, dict[str, float]] = {}
         found_data = False
         lines_processed = 0
         
