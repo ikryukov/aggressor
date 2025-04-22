@@ -118,7 +118,8 @@ class BenchmarkRunner:
         num_processes: int,
         procs_per_node: int,
         memory_type: MemoryType,
-        bench_dir: Path
+        bench_dir: Path,
+        mpi_args: str
     ) -> str:
         """Generate appropriate MPI command for the benchmark.
 
@@ -136,9 +137,9 @@ class BenchmarkRunner:
         generator = self._command_generators[benchmark_type]
         
         if benchmark_type == BenchmarkType.OSU:
-            return generator(benchmark_cmd, num_processes, procs_per_node, memory_type, self.build_dir, bench_dir)
+            return generator(benchmark_cmd, num_processes, procs_per_node, memory_type, self.build_dir, bench_dir, mpi_args)
         else:
-            return generator(benchmark_cmd, num_processes, procs_per_node, memory_type, self.build_dir)
+            return generator(benchmark_cmd, num_processes, procs_per_node, memory_type, self.build_dir, None, mpi_args)
 
     def _generate_ucc_perftest_command(
         self,
@@ -147,7 +148,8 @@ class BenchmarkRunner:
         procs_per_node: int,
         memory_type: MemoryType,
         build_dir: Path,
-        bench_dir: Path = None
+        bench_dir: Path,
+        mpi_args: str
     ) -> str:
         """Generate MPI command specifically for UCC perftest.
         
@@ -179,6 +181,8 @@ class BenchmarkRunner:
             "--mca", "coll_ucc_enable", "0"
         ])
 
+        mpi_cmd.extend(mpi_args.split())
+
         # Memory type specific flags for UCC
         if memory_type == MemoryType.CUDA:
             mpi_cmd.extend(["-x", "UCC_TLS=cuda,ucp"])
@@ -202,7 +206,8 @@ class BenchmarkRunner:
         procs_per_node: int,
         memory_type: MemoryType,
         build_dir: Path,
-        bench_dir: Path
+        bench_dir: Path,
+        mpi_args: str
     ) -> str:
         """Generate MPI command specifically for OSU benchmarks.
 
@@ -226,59 +231,8 @@ class BenchmarkRunner:
             "--map-by", map_type
         ]
 
-        # UCC-specific flags
-        mpi_cmd.extend([
-            "--mca", "coll", "^hcoll", 
-            "--mca", "coll_ucc_enable", "0"
-        ])
-
-        # Add mapping by node for OSU benchmarks
-        # if num_nodes > 1:
-        #     mpi_cmd.extend([
-        #         "--map-by", f"ppr:{procs_per_node}:node"
-        #     ])
-
-
+        mpi_cmd.extend(mpi_args.split())
         mpi_cmd.append(f"{bench_dir}/{benchmark_cmd}")
-        
-        return " ".join(mpi_cmd)
-
-    def _generate_default_mpi_command(
-        self,
-        benchmark_cmd: str,
-        num_processes: int,
-        procs_per_node: int,
-        memory_type: MemoryType,
-        build_dir: Path
-    ) -> str:
-        """Generate default MPI command for other benchmarks.
-
-        Args:
-            benchmark_cmd: Benchmark command to run
-            num_processes: Total number of processes
-            procs_per_node: Processes per node
-            memory_type: Memory type to use
-            build_dir: Directory containing built binaries
-
-        Returns:
-            Complete MPI command
-        """
-        num_nodes = (num_processes + procs_per_node - 1) // procs_per_node
-        
-        mpi_cmd = [
-            "mpirun",
-            "-np", str(num_processes),
-            "-x", f"LD_LIBRARY_PATH={build_dir}/lib:$LD_LIBRARY_PATH",
-            "--tag-output"
-        ]
-
-        # Add memory type specific flags for generic benchmarks
-        if memory_type == MemoryType.CUDA:
-            mpi_cmd.extend(["-x", "CUDA_VISIBLE_DEVICES=0,1,2,3"])
-        elif memory_type == MemoryType.ROCM:
-            mpi_cmd.extend(["-x", "ROCR_VISIBLE_DEVICES=0,1,2,3"])
-
-        mpi_cmd.append(f"{build_dir}/bin/{benchmark_cmd}")
         
         return " ".join(mpi_cmd)
 
@@ -448,7 +402,8 @@ class BenchmarkRunner:
             num_processes,
             procs_per_node,
             memory_type,
-            bench_dir
+            bench_dir,
+            config.mpi_args
         )
                 
         logger.info(f"MPI command: {mpi_cmd}")

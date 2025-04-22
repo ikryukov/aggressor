@@ -58,6 +58,7 @@ class BenchmarkConfig(BaseModel):
     type: BenchmarkType = Field(..., description="Type of benchmark (ucc or osu)")
     benchmark_dir: Path = Field(..., description="Directory containing benchmark binaries")
     command: str = Field(..., description="Command to run the benchmark")
+    mpi_args: str = Field(default="", description="Additional MPI arguments")
     params: BenchmarkParams = Field(..., description="Benchmark parameters")
     parser: str = Field(..., description="Name of parser plugin to use")
     metrics: list[str] = Field(..., description="Metrics to collect")

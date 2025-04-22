@@ -42,6 +42,7 @@ benchmarks:
     type: "osu"
     benchmark_dir: "/global/exafs/users/ikryukov/hpcx-v2.22.1-gcc-doca_ofed-redhat9-cuda12-aarch64/ompi/tests/osu-micro-benchmarks-cuda/"
     command: "osu_bcast -i 100000 --full"
+    mpi_args: "-x CUDA_VISIBLE_DEVICES=0 --mca coll_hcoll_enable 0 --mca coll_ucc_enable 1 --mca coll_ucc_priority 100"
     params:
       num_processes: [8]
       procs_per_node: [1]
