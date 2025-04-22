@@ -60,7 +60,6 @@ class BenchmarkType(Enum):
     """Types of benchmarks supported by the runner."""
     UCC_PERFTEST = "ucc_perftest"
     OSU = "osu"
-    DEFAULT = "default"
 
 
 class BenchmarkRunner:
@@ -78,8 +77,7 @@ class BenchmarkRunner:
         # Register command generators for different benchmark types
         self._command_generators: dict[BenchmarkType, MPICommandGenerator] = {
             BenchmarkType.UCC_PERFTEST: self._generate_ucc_perftest_command,
-            BenchmarkType.OSU: self._generate_osu_command,
-            BenchmarkType.DEFAULT: self._generate_default_mpi_command
+            BenchmarkType.OSU: self._generate_osu_command
         }
 
     def _detect_benchmark_type(self, benchmark_cmd: str) -> BenchmarkType:
@@ -96,7 +94,7 @@ class BenchmarkRunner:
         elif benchmark_cmd.startswith("osu_"):
             return BenchmarkType.OSU
         else:
-            return BenchmarkType.DEFAULT
+            raise ValueError(f"Unknown benchmark type: {benchmark_cmd}")
 
     def _generate_mpi_hostfile(self, num_nodes: int) -> Path:
         """Generate MPI hostfile.
@@ -122,13 +120,14 @@ class BenchmarkRunner:
         memory_type: MemoryType,
         bench_dir: Path
     ) -> str:
-        """Generate MPI run command based on benchmark type.
+        """Generate appropriate MPI command for the benchmark.
 
         Args:
             benchmark_cmd: Benchmark command to run
             num_processes: Total number of processes
             procs_per_node: Processes per node
             memory_type: Memory type to use
+            bench_dir: Directory containing benchmark binaries
 
         Returns:
             Complete MPI command
@@ -136,14 +135,10 @@ class BenchmarkRunner:
         benchmark_type = self._detect_benchmark_type(benchmark_cmd)
         generator = self._command_generators[benchmark_type]
         
-        return generator(
-            benchmark_cmd,
-            num_processes,
-            procs_per_node,
-            memory_type,
-            self.build_dir,
-            bench_dir
-        )
+        if benchmark_type == BenchmarkType.OSU:
+            return generator(benchmark_cmd, num_processes, procs_per_node, memory_type, self.build_dir, bench_dir)
+        else:
+            return generator(benchmark_cmd, num_processes, procs_per_node, memory_type, self.build_dir)
 
     def _generate_ucc_perftest_command(
         self,
@@ -152,26 +147,30 @@ class BenchmarkRunner:
         procs_per_node: int,
         memory_type: MemoryType,
         build_dir: Path,
-        bench_dir: Path
+        bench_dir: Path = None
     ) -> str:
         """Generate MPI command specifically for UCC perftest.
-
+        
         Args:
             benchmark_cmd: UCC perftest command to run
             num_processes: Total number of processes
             procs_per_node: Processes per node
             memory_type: Memory type to use
             build_dir: Directory containing built binaries
-
+            bench_dir: Optional directory containing benchmark binaries
+            
         Returns:
             Complete MPI command for UCC perftest
         """
+        # Use bench_dir if provided, otherwise fall back to build_dir
+        target_dir = bench_dir if bench_dir else build_dir
+        
         num_nodes = (num_processes + procs_per_node - 1) // procs_per_node
         
         mpi_cmd = [
             "mpirun",
             "-np", str(num_processes),
-            "-x", f"LD_LIBRARY_PATH={build_dir}/lib:$LD_LIBRARY_PATH"
+            "-x", f"LD_LIBRARY_PATH={target_dir}/lib:$LD_LIBRARY_PATH"
         ]
 
         # UCC-specific flags
@@ -187,7 +186,7 @@ class BenchmarkRunner:
         elif memory_type == MemoryType.ROCM:
             mpi_cmd.extend(["-x", "UCC_TLS=rocm,ucp"])
 
-        mpi_cmd.append(f"{build_dir}/bin/{benchmark_cmd}")
+        mpi_cmd.append(f"{target_dir}/bin/{benchmark_cmd}")
 
         if memory_type == MemoryType.CUDA:
             mpi_cmd.extend(["-m", "cuda"])
@@ -213,15 +212,18 @@ class BenchmarkRunner:
             procs_per_node: Processes per node
             memory_type: Memory type to use
             build_dir: Directory containing built binaries
+            bench_dir: Directory containing benchmark binaries
+            
         Returns:
             Complete MPI command for OSU benchmark
         """
-        num_nodes = (num_processes + procs_per_node - 1) // procs_per_node
+        map_type = "node"
         
         mpi_cmd = [
             "mpirun",
             "-np", str(num_processes),
-            "-x", f"LD_LIBRARY_PATH={build_dir}/lib:$LD_LIBRARY_PATH"            
+            "-x", f"LD_LIBRARY_PATH={build_dir}/lib:$LD_LIBRARY_PATH",
+            "--map-by", map_type
         ]
 
         # UCC-specific flags
@@ -284,7 +286,9 @@ class BenchmarkRunner:
         self,
         config: SlurmConfig,
         mpi_cmd: str,
-        num_nodes: int
+        num_nodes: int,
+        num_processes: int,
+        procs_per_node: int
     ) -> str:
         """Generate Slurm batch script.
 
@@ -292,6 +296,8 @@ class BenchmarkRunner:
             config: Slurm configuration
             mpi_cmd: MPI command to run
             num_nodes: Number of nodes required
+            num_processes: Total number of processes
+            procs_per_node: Processes per node
 
         Returns:
             Slurm batch script content
@@ -301,9 +307,10 @@ class BenchmarkRunner:
             partition=config.partition,
             time_limit=config.time_limit,
             num_nodes=num_nodes,
-            account=config.account,
-            qos=config.qos,
-            additional_flags=config.additional_flags,
+            num_processes=num_processes,
+            procs_per_node=procs_per_node,
+            output_dir=config.output_dir,
+            job_name=config.job_name,
             mpi_cmd=mpi_cmd
         )
 
@@ -339,8 +346,9 @@ class BenchmarkRunner:
             Tuple of (stdout, stderr, return_code)
         """
         # Write script to temporary file
-        script_file = Path(tempfile.mktemp(prefix=f"slurm_{job_name}_"))
+        script_file = Path(tempfile.mktemp(prefix=f"slurm_{job_name}_", suffix=".sh"))
         script_file.write_text(script_content)
+        logger.info(f"Generated Slurm script at {script_file}:\n{script_content}")
 
         try:
             # Submit job
@@ -354,6 +362,7 @@ class BenchmarkRunner:
                 return "", stderr.decode(), proc.returncode
 
             job_id = stdout.decode().strip()
+            logger.info(f"Submitted Slurm job with ID {job_id}")
 
             # Wait for job completion
             while True:
@@ -363,22 +372,51 @@ class BenchmarkRunner:
                     stderr=asyncio.subprocess.PIPE
                 )
                 stdout, stderr = await proc.communicate()
-                if "JobState=COMPLETED" in stdout.decode():
+                job_status = stdout.decode()
+                
+                if "JobState=COMPLETED" in job_status:
+                    logger.info(f"Job {job_id} completed successfully")
                     break
-                elif any(state in stdout.decode() for state in ["FAILED", "CANCELLED", "TIMEOUT"]):
-                    return "", f"Job failed with state: {stdout.decode()}", 1
+                elif any(state in job_status for state in ["FAILED", "CANCELLED", "TIMEOUT", "NODE_FAIL"]):
+                    error_state = next(state for state in ["FAILED", "CANCELLED", "TIMEOUT", "NODE_FAIL"] if state in job_status)
+                    logger.error(f"Job {job_id} ended with state: {error_state}")
+                    return "", f"Job failed with state: {error_state}", 1
+                    
+                logger.debug(f"Job {job_id} still running, waiting...")
                 await asyncio.sleep(10)
 
-            # Get output
-            with open(f"slurm-{job_id}.out") as f:
-                stdout = f.read()
-            with open(f"slurm-{job_id}.err") as f:
-                stderr = f.read()
+            # Get output from the job's log file
+            # The output file is specified in the job script as "output_dir/job_name-job_id.log"
+            # We need to parse this from the job status
+            output_file = None
+            for line in job_status.split("\n"):
+                if "StdOut=" in line:
+                    output_path = line.split("StdOut=")[1].strip()
+                    if output_path and output_path != "(null)":
+                        output_file = Path(output_path)
+                        break
+            
+            if not output_file or not output_file.exists():
+                logger.warning(f"Could not find output file for job {job_id}, falling back to slurm-{job_id}.out")
+                output_file = Path(f"slurm-{job_id}.out")
+                
+            if output_file.exists():
+                stdout = output_file.read_text()
+            else:
+                logger.error(f"No output file found for job {job_id}")
+                stdout = ""
+                
+            # Check for error file
+            error_file = Path(f"slurm-{job_id}.err")
+            if error_file.exists():
+                stderr = error_file.read_text()
+            else:
+                stderr = ""
 
             return stdout, stderr, 0
 
         finally:
-            script_file.unlink()
+            script_file.unlink(missing_ok=True)
 
     async def run_benchmark(
         self,
@@ -418,10 +456,22 @@ class BenchmarkRunner:
         # Run benchmark
         if config.slurm:
             num_nodes = (num_processes + procs_per_node - 1) // procs_per_node
-            script = self._generate_slurm_script(config.slurm, mpi_cmd, num_nodes)
+            
+            # Update slurm configuration job name with benchmark name
+            if not hasattr(config.slurm, 'job_name') or not config.slurm.job_name:
+                config.slurm.job_name = f"{config.name}_{commit_hash}"
+                
+            script = self._generate_slurm_script(
+                config.slurm,
+                mpi_cmd,
+                num_nodes,
+                num_processes,
+                procs_per_node
+            )
+            
             stdout, stderr, rc = await self._run_slurm(
                 script,
-                f"{config.name}_{commit_hash}"
+                config.slurm.job_name
             )
         else:
             stdout, stderr, rc = await self._run_local(mpi_cmd)

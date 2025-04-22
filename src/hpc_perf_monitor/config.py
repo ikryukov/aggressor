@@ -42,6 +42,8 @@ class SlurmConfig(BaseModel):
     """Slurm job submission configuration."""
     partition: str = Field(..., description="Slurm partition to use")
     time_limit: str = Field(default="01:00:00", description="Job time limit (HH:MM:SS)")
+    output_dir: str = Field(default="~/results", description="Directory for job output files")
+    job_name: str = Field(default="ucc_benchmark", description="Name of the job")
     account: str | None = Field(None, description="Slurm account to charge")
     qos: str | None = Field(None, description="Quality of Service")
     additional_flags: dict[str, str] = Field(

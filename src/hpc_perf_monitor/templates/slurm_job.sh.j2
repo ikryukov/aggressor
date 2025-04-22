@@ -1,25 +1,23 @@
-#!/bin/bash
+#!/bin/bash -l
+#SBATCH --ntasks={{ num_processes }}
+#SBATCH --ntasks-per-node={{ procs_per_node }}
+#SBATCH --cpus-per-task=1
+#SBATCH --nodes={{ num_nodes }}
 #SBATCH --partition={{ partition }}
 #SBATCH --time={{ time_limit }}
-#SBATCH --nodes={{ num_nodes }}
-{% if account %}
-#SBATCH --account={{ account }}
-{% endif %}
-{% if qos %}
-#SBATCH --qos={{ qos }}
-{% endif %}
-{% for flag, value in additional_flags.items() %}
-#SBATCH --{{ flag }}={{ value }}
-{% endfor %}
+#SBATCH --exclusive
+#SBATCH --output={{ output_dir }}/{{ job_name }}-%j.log
+#SBATCH --job-name={{ job_name }}
 
-# Load any required modules
+. /global/exafs/groups/gh/bootstrap-env.sh
 module purge
-module load openmpi
+module load gcc/13.3.0-gcc-11.4.1
+module load cuda/12.5.1-gcc-13.3.0
 
-# Set any environment variables
-export OMPI_MCA_btl=^openib
-export UCX_TLS=rc,sm,self
-export UCX_NET_DEVICES=mlx5_0:1
+source ${SCRATCH_DDN}/hpcx-v2.22.1-gcc-doca_ofed-redhat9-cuda12-aarch64/hpcx-init.sh
+hpcx_load
+
+cd ${SCRATCH_DDN}
 
 # Run the benchmark
-{{ mpi_cmd }} 
+{{ mpi_cmd }}

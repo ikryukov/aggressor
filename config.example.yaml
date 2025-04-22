@@ -12,7 +12,7 @@ build:
     - "--enable-debug"
     - "--with-cuda=/usr/local/cuda"
   make_flags:
-    - "-j8"
+    - ""
   env_vars:
     CC: "gcc"
     CXX: "g++"
@@ -40,14 +40,30 @@ benchmarks:
   #   metrics: ["latency_avg", "bandwidth_avg"]
   - name: "osu_bcast"
     type: "osu"
-    benchmark_dir: "/home/ilya/work/hpcx/ompi/tests/osu-micro-benchmarks/"
+    benchmark_dir: "/global/exafs/users/ikryukov/hpcx-v2.22.1-gcc-doca_ofed-redhat9-cuda12-aarch64/ompi/tests/osu-micro-benchmarks-cuda/"
     command: "osu_bcast -i 100000 --full"
     params:
-      num_processes: [2]
+      num_processes: [8]
       procs_per_node: [1]
-      memory_types: ["host"]
+      memory_types: ["cuda"]
     parser: "osu_bench"
     metrics: ["latency_max"]
+    slurm:
+      partition: "gh"
+      time_limit: "00:30:00"
+      output_dir: "/global/exafs/users/ikryukov/results"
+      job_name: "osu_bcast"
+
+  # - name: "osu_bcast"
+  #   type: "osu"
+  #   benchmark_dir: "/home/ilya/work/hpcx/ompi/tests/osu-micro-benchmarks/"
+  #   command: "osu_bcast -i 100000 --full"
+  #   params:
+  #     num_processes: [2]
+  #     procs_per_node: [1]
+  #     memory_types: ["host"]
+  #   parser: "osu_bench"
+  #   metrics: ["latency_max"]
   # - name: "osu_allgather"
   #   type: "osu"
   #   benchmark_dir: "/home/ilya/work/hpcx/ompi/tests/osu-micro-benchmarks/"
