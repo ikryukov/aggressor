@@ -174,9 +174,18 @@ class ReportGenerator:
             output_file: Path to save report to
             commit_info: Optional dictionary with commit information
         """
+        # Extract AI analysis if available without including it in the main commit info
+        ai_analysis = None
+        if commit_info and 'ai_analysis' in commit_info:
+            ai_analysis = commit_info['ai_analysis']
+            # Create a copy of commit_info without the ai_analysis
+            commit_info_without_ai = {k: v for k, v in commit_info.items() if k != 'ai_analysis'}
+        else:
+            commit_info_without_ai = commit_info or {}
+        
         report_data = {
             "timestamp": datetime.now().isoformat(),
-            "commit_info": commit_info or {},
+            "commit_info": commit_info_without_ai,
             "sections": [
                 {
                     "name": result.name,
@@ -190,6 +199,17 @@ class ReportGenerator:
             ],
             "has_regression": any(result.has_regression for result in analysis)
         }
+        
+        # Add AI analysis if available
+        if ai_analysis:
+            report_data["ai_analysis"] = {
+                "content": ai_analysis["content"],
+                "file": ai_analysis["file"],
+            }
+            
+            # Add benchmark info if available
+            if "benchmark_info" in ai_analysis:
+                report_data["ai_analysis"]["benchmark_info"] = ai_analysis["benchmark_info"]
         
         with open(output_file, "w") as f:
             json.dump(report_data, f, indent=2)

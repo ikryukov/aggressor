@@ -2,6 +2,7 @@
 
 import asyncio
 import logging
+import os
 import shutil
 from pathlib import Path
 
@@ -10,6 +11,7 @@ import yaml
 from rich.console import Console
 from rich.logging import RichHandler
 
+from .ai_diff_analyzer import AIDiffAnalysisConfig, AIDiffAnalyzer
 from .benchmark_runner import BenchmarkRunner
 from .build_manager import BuildManager
 from .config import ProjectConfig
@@ -228,6 +230,114 @@ def run_analysis(
 
                 # Analyze results
                 analysis = metrics_analyzer.analyze_results(ref_results, test_results)
+                
+                # Check if regression is found
+                has_regression = any(result.has_regression for result in analysis)
+                
+                # Extra report info to add
+                extra_info = {
+                    "ref_commit": {
+                        "hash": ref_info.hash,
+                        "short_hash": ref_info.short_hash,
+                        "author": ref_info.author,
+                        "date": ref_info.date.strftime('%Y-%m-%d %H:%M'),
+                        "message": ref_info.message
+                    },
+                    "test_commit": {
+                        "hash": test_info.hash, 
+                        "short_hash": test_info.short_hash,
+                        "author": test_info.author,
+                        "date": test_info.date.strftime('%Y-%m-%d %H:%M'),
+                        "message": test_info.message
+                    }
+                }
+                
+                # Run AI diff analysis if regression is found
+                if has_regression:
+                    logger.info("Regression detected! Running AI diff analysis...")
+                    
+                    # Set up output file for AI analysis
+                    ai_analysis_file = output_dir / f"ai_analysis_{test_info.short_hash}.txt"
+                    
+                    # Collect regression information from each benchmark result
+                    benchmark_info = {}
+                    
+                    # Find the worst regression to report
+                    worst_regression = None
+                    worst_regression_value = 0
+                    
+                    for result in analysis:
+                        if result.has_regression:
+                            # Extract information about the regression
+                            for metric, changes in result.significant_changes.items():
+                                for change in changes:
+                                    diff_pct = change[f"{metric}_diff_pct"]
+                                    if diff_pct < 0 and abs(diff_pct) > abs(worst_regression_value):
+                                        worst_regression_value = diff_pct
+                                        worst_regression = {
+                                            "benchmark_name": result.name,
+                                            "parameters": result.parameters,
+                                            "metric": metric,
+                                            "msg_size": change["msg_size"],
+                                            "ref_value": change[f"ref_{metric}"],
+                                            "test_value": change[f"test_{metric}"],
+                                            "diff_pct": diff_pct
+                                        }
+                    
+                    # Prepare benchmark information for AI analysis
+                    if worst_regression:
+                        benchmark_info = {
+                            "benchmark_name": worst_regression["benchmark_name"],
+                            "parameters": worst_regression["parameters"],
+                            "metrics": {
+                                worst_regression["metric"]: {
+                                    "reference_value": worst_regression["ref_value"],
+                                    "test_value": worst_regression["test_value"], 
+                                    "difference_percent": worst_regression["diff_pct"]
+                                }
+                            },
+                            "regression_details": (
+                                f"Performance degradation of {abs(worst_regression['diff_pct']):.2f}% in {worst_regression['metric']} "
+                                f"at message size {worst_regression['msg_size']} bytes"
+                            )
+                        }
+                    
+                    # Run AI analysis on the test commit
+                    source_dir = config.build.source_dir / test_hash
+                    
+                    # Get API key from environment variable if not provided
+                    api_key = os.environ.get("OPENAI_API_KEY", "")
+                    if not api_key:
+                        logger.warning("No OpenAI API key provided. AI diff analysis will be skipped.")
+                        ai_analysis = "AI diff analysis skipped: No API key provided."
+                    else:
+                        # Create configuration
+                        ai_config = AIDiffAnalysisConfig(
+                            api_base_url="https://integrate.api.nvidia.com/v1",
+                            api_key=api_key,
+                            model="nvdev/meta/llama-3.1-70b-instruct",
+                            output_file=ai_analysis_file
+                        )
+                        
+                        # Create analyzer and run analysis
+                        analyzer = AIDiffAnalyzer(ai_config)
+                        try:
+                            # Analyze the commit
+                            logger.info(f"Running AI analysis for commit {test_hash[:8]}")
+                            result = await analyzer.analyze_commit(str(source_dir), test_hash, benchmark_info)
+                            ai_analysis = result.analysis
+                        except Exception as e:
+                            logger.error(f"AI diff analysis failed: {e}")
+                            ai_analysis = f"AI diff analysis failed: {e}"
+                    
+                    # Add AI analysis to the report
+                    extra_info["ai_analysis"] = {
+                        "content": ai_analysis,
+                        "file": str(ai_analysis_file),
+                        "benchmark_info": benchmark_info
+                    }
+                    
+                    logger.info(f"AI diff analysis completed and saved to {ai_analysis_file}")
 
                 # Generate reports in all requested formats
                 for report_format in config.report_formats:
@@ -236,34 +346,15 @@ def run_analysis(
                         analysis,
                         report_file,
                         report_format,
-                        {
-                            "ref_commit": {
-                                "hash": ref_info.hash,
-                                "short_hash": ref_info.short_hash,
-                                "author": ref_info.author,
-                                "date": ref_info.date.strftime('%Y-%m-%d %H:%M'),
-                                "message": ref_info.message
-                            },
-                            "test_commit": {
-                                "hash": test_info.hash, 
-                                "short_hash": test_info.short_hash,
-                                "author": test_info.author,
-                                "date": test_info.date.strftime('%Y-%m-%d %H:%M'),
-                                "message": test_info.message
-                            }
-                        }
+                        extra_info
                     )
-                    logger.info(f"Generated {report_format} report: {report_file}")
 
-        finally:
-            logger.info("Cleaning up")
-            # Cleanup
-            # await git_manager.cleanup()
-            # await build_manager.cleanup()
+        except Exception as e:
+            logger.error(f"Analysis failed: {e}")
+            return 1
 
-    # Run analysis
-    try:
-        asyncio.run(main())
-    except Exception as e:
-        logger.error(f"Analysis failed: {e}")
-        raise typer.Exit(1) 
+    asyncio.run(main())
+
+
+if __name__ == "__main__":
+    typer.run(run_analysis) 

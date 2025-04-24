@@ -13,6 +13,23 @@ Generated at: {{ timestamp }}
 ## ⚠️ Performance Regressions Detected
 {% endif %}
 
+{% if commit_info.ai_analysis %}
+## AI Diff Analysis
+
+{% if commit_info.ai_analysis.benchmark_info %}
+### Regression Context
+- **Benchmark**: {{ commit_info.ai_analysis.benchmark_info.benchmark_name }}
+- **Parameters**: {{ commit_info.ai_analysis.benchmark_info.parameters|tojson }}
+- **Metrics**: {{ commit_info.ai_analysis.benchmark_info.metrics|tojson }}
+- **Details**: {{ commit_info.ai_analysis.benchmark_info.regression_details }}
+{% endif %}
+
+### Analysis
+{{ commit_info.ai_analysis.content }}
+
+_Full analysis saved to: {{ commit_info.ai_analysis.file }}_
+{% endif %}
+
 {% for section in sections %}
 ## {{ section.title }}{% if section.has_regression %} ⚠️{% endif %}
 

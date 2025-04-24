@@ -17,4 +17,6 @@ import sys
 # logger = logging.getLogger("hpc_perf_monitor.metrics_analyzer")
 # logger.setLevel(logging.DEBUG)
 
+from .ai_diff_analyzer import AIDiffAnalysisConfig, AIDiffAnalyzer, DiffAnalysisResult
+
 __version__ = "0.1.0" 
