@@ -20,10 +20,10 @@ class AIDiffAnalysisConfig(BaseModel):
     # OpenAI API configuration
     api_base_url: str = "https://integrate.api.nvidia.com/v1"
     api_key: str = os.environ.get("OPENAI_API_KEY", "")
-    model: str = "nvdev/meta/llama-3.1-70b-instruct"
+    model: str = "nvdev/deepseek-ai/deepseek-r1"
     
     # Analysis parameters
-    temperature: float = 0.2
+    temperature: float = 0.6
     top_p: float = 0.7
     max_tokens: int = 1024
     
