@@ -45,6 +45,7 @@ class SlurmConfig(BaseModel):
     time_limit: str = Field(default="01:00:00", description="Job time limit (HH:MM:SS)")
     output_dir: str = Field(default="~/results", description="Directory for job output files")
     job_name: str = Field(default="ucc_benchmark", description="Name of the job")
+    template: str = Field(default="slurm_job.sh.j2", description="Template file for Slurm script")
     account: str | None = Field(None, description="Slurm account to charge")
     qos: str | None = Field(None, description="Quality of Service")
     additional_flags: dict[str, str] = Field(

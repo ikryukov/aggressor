@@ -9,8 +9,13 @@
 #SBATCH --output={{ output_dir }}/{{ job_name }}-%j.log
 #SBATCH --job-name={{ job_name }}
 
-module use /hpc/local/etc/modulefiles/
-module load hpcx-ga-gcc dev/cuda-latest
+. /global/exafs/groups/gh/bootstrap-env.sh
+module purge
+module load hpcx-gcc
+module load dev/cuda-latest
+
+source /scrap/users/ikryukov/hpcx/hpcx-init.sh
+hpcx_load
 
 # Run the benchmark
 {{ mpi_cmd }}

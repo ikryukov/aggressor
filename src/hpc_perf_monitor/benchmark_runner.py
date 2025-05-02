@@ -256,7 +256,9 @@ class BenchmarkRunner:
         Returns:
             Slurm batch script content
         """
-        template = self.env.get_template("slurm_job.sh.j2")
+        # Use template from config if specified, otherwise use default
+        template_name = getattr(config, 'template', 'slurm_job.sh.j2')
+        template = self.env.get_template(template_name)
         return template.render(
             partition=config.partition,
             time_limit=config.time_limit,

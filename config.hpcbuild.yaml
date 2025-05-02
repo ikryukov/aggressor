@@ -1,0 +1,70 @@
+repo_url: "https://github.com/openucx/ucc.git"
+work_dir: "/scrap/users/ikryukov/hpc-perf-monitor"
+ref_commit: "878414a28a7d6eba8865351071826dd644fe7da9"
+test_commits:
+  - "985947a521d7c00e6866f032b4db4c18e5bf9e6a"
+  - "HEAD"
+
+build:
+  source_dir: "/scrap/users/ikryukov/hpc-perf-monitor/source"
+  build_dir: "/scrap/users/ikryukov/hpc-perf-monitor/build"
+  install_dir: "/.autodirect/mtrswgwork/ikryukov/ucc_build_redhat"
+  configure_flags:
+    - "--with-ucx=$HPCX_UCX_DIR"
+    - "--with-cuda=$CUDA_HOME"
+    - "--with-mpi=$HPCX_MPI_DIR"
+    - "--with-nvcc-gencode=\"-gencode=arch=compute_80,code=sm_80\""
+    - "--without-nccl"
+    - "--without-sharp"
+  make_flags:
+    - ""
+  env_vars:
+    CC: "gcc"
+    CXX: "g++"
+    DOXYGEN: "no"
+
+benchmarks:
+  # - name: "osu_bcast"
+  #   type: "osu"
+  #   benchmark_dir: "$HPCX_OSU_CUDA_DIR"
+  #   command: "osu_bcast -i 10000 --full -d cuda"
+  #   mpi_args: "-x CUDA_VISIBLE_DEVICES=0 --mca coll_hcoll_enable 0 --mca coll_ucc_enable 1 --mca coll_ucc_priority 100"
+  #   params:
+  #     num_processes: [8]
+  #     procs_per_node: [1]
+  #     memory_types: ["cuda"]
+  #   parser: "osu_bench"
+  #   metrics: ["latency_max"]
+  #   slurm:
+  #     partition: "rock"
+  #     time_limit: "00:30:00"
+  #     output_dir: "/.autodirect/mtrswgwork/ikryukov/results"
+  #     job_name: "osu_bcast"
+  - name: "osu_allreduce"
+    type: "osu"
+    benchmark_dir: "$HPCX_OSU_CUDA_DIR"
+    command: "osu_allreduce -i 10000 --full -d cuda -m 4096:32768"
+    mpi_args: "-x CUDA_VISIBLE_DEVICES=0 --mca coll_hcoll_enable 0 --mca coll_ucc_enable 1 --mca coll_ucc_priority 100"
+    params:
+      num_processes: [8]
+      procs_per_node: [1]
+      memory_types: ["cuda"]
+    parser: "osu_bench"
+    metrics: ["latency_avg"]
+    slurm:
+      template: "slurm_job_rock.sh.j2"
+      partition: "rock"
+      time_limit: "01:00:00"
+      output_dir: "/.autodirect/mtrswgwork/ikryukov/results"
+      job_name: "osu_allreduce"
+
+regression:
+  threshold_pct: 5.0
+  min_runs: 1
+  metrics_weight:
+    latency_avg: 1.0
+    bandwidth_avg: 1.0
+
+report_formats:
+  - "html"
+  - "markdown"
