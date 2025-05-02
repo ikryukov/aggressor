@@ -23,6 +23,7 @@ class BuildConfig(BaseModel):
     """Configuration for building HPC middleware."""
     source_dir: Path = Field(..., description="Directory containing source code")
     build_dir: Path = Field(..., description="Directory for build artifacts")
+    install_dir: Path = Field(..., description="Directory for installed artifacts")
     configure_flags: list[str] = Field(default_factory=list, description="Custom configure flags")
     make_flags: list[str] = Field(default_factory=list, description="Custom make flags")
     env_vars: dict[str, str] = Field(default_factory=dict, description="Environment variables for build")

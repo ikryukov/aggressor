@@ -65,13 +65,13 @@ class BenchmarkType(Enum):
 class BenchmarkRunner:
     """Manages benchmark execution."""
 
-    def __init__(self, build_dir: Path) -> None:
+    def __init__(self, install_dir: Path) -> None:
         """Initialize BenchmarkRunner.
 
         Args:
             build_dir: Directory containing built binaries
         """
-        self.build_dir = build_dir
+        self.install_dir = install_dir
         self.env = Environment(loader=FileSystemLoader(Path(__file__).parent / "templates"))
         
         # Register command generators for different benchmark types
@@ -137,9 +137,9 @@ class BenchmarkRunner:
         generator = self._command_generators[benchmark_type]
         
         if benchmark_type == BenchmarkType.OSU:
-            return generator(benchmark_cmd, num_processes, procs_per_node, memory_type, self.build_dir, bench_dir, mpi_args)
+            return generator(benchmark_cmd, num_processes, procs_per_node, memory_type, self.install_dir, bench_dir, mpi_args)
         else:
-            return generator(benchmark_cmd, num_processes, procs_per_node, memory_type, self.build_dir, None, mpi_args)
+            return generator(benchmark_cmd, num_processes, procs_per_node, memory_type, self.install_dir, None, mpi_args)
 
     def _generate_ucc_perftest_command(
         self,
@@ -205,7 +205,7 @@ class BenchmarkRunner:
         num_processes: int,
         procs_per_node: int,
         memory_type: MemoryType,
-        build_dir: Path,
+        install_dir: Path,
         bench_dir: Path,
         mpi_args: str
     ) -> str:
@@ -216,7 +216,7 @@ class BenchmarkRunner:
             num_processes: Total number of processes
             procs_per_node: Processes per node
             memory_type: Memory type to use
-            build_dir: Directory containing built binaries
+            install_dir: Directory containing installed binaries
             bench_dir: Directory containing benchmark binaries
             
         Returns:
@@ -227,7 +227,7 @@ class BenchmarkRunner:
         mpi_cmd = [
             "mpirun",
             "-np", str(num_processes),
-            "-x", f"LD_LIBRARY_PATH={build_dir}/lib:$LD_LIBRARY_PATH",
+            "-x", f"LD_LIBRARY_PATH={install_dir}/lib:$LD_LIBRARY_PATH",
             "--map-by", map_type
         ]
 

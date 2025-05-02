@@ -91,12 +91,23 @@ class BuildManager:
         """
         logger.info(f"Starting build for commit {commit_hash}")
         build_dir = self.config.build_dir / commit_hash
+        install_dir = self.config.install_dir / commit_hash
+        logger.info(f"Build directory: {build_dir}")
+        logger.info(f"Install directory: {install_dir}")
+        if build_dir.exists() and install_dir.exists():
+            return build_dir, install_dir
+        
         if build_dir.exists():
-            return build_dir
-            # logger.info(f"Removing existing build directory: {build_dir}")
-            # shutil.rmtree(build_dir)
-        build_dir.mkdir(parents=True)
-        logger.info(f"Created build directory: {build_dir}")
+            logger.info(f"Build directory already exists: {build_dir}")
+        else:
+            build_dir.mkdir(parents=True)
+            logger.info(f"Created build directory: {build_dir}")
+
+        if install_dir.exists():
+            logger.info(f"Install directory already exists: {install_dir}")
+        else:
+            install_dir.mkdir(parents=True)
+            logger.info(f"Created build directory: {build_dir}")
 
         try:
             # Run autogen if present
@@ -116,7 +127,7 @@ class BuildManager:
             logger.info("Running configure step")
             configure_cmd = [
                 f"{source_dir}/configure",
-                f"--prefix={build_dir}",
+                f"--prefix={install_dir}",
                 *self.config.configure_flags
             ]
             try:
@@ -157,7 +168,7 @@ class BuildManager:
                 raise BuildError("Install step failed", stdout=e.stdout, stderr=e.stderr)
 
             logger.info(f"Build completed successfully for commit {commit_hash}")
-            return build_dir
+            return build_dir, install_dir
 
         except BuildError as e:
             logger.error(f"Build failed for commit {commit_hash}")

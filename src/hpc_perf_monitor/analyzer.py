@@ -74,11 +74,12 @@ async def run_benchmarks(
     logger.info(f"Prepared source code for commit {commit_hash}")
 
     # Build
-    build_dir = await build_manager.build(source_dir, commit_hash)
+    build_dir, install_dir = await build_manager.build(source_dir, commit_hash)
     logger.info(f"Built commit {commit_hash}")
 
     # Run benchmarks
-    runner = BenchmarkRunner(build_dir)
+    print(f"Install directory: {install_dir}")
+    runner = BenchmarkRunner(install_dir)
     results = []
 
     for benchmark in config.benchmarks:
