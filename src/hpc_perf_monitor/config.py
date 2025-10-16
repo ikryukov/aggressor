@@ -27,6 +27,27 @@ class BuildConfig(BaseModel):
     configure_flags: list[str] = Field(default_factory=list, description="Custom configure flags")
     make_flags: list[str] = Field(default_factory=list, description="Custom make flags")
     env_vars: dict[str, str] = Field(default_factory=dict, description="Environment variables for build")
+    # Docker build options
+    use_docker: bool = Field(
+        default=False,
+        description="Build inside Docker container if true"
+    )
+    dockerfile_path: Path = Field(
+        default=Path(".devcontainer/Dockerfile"),
+        description="Path to Dockerfile used for build environment"
+    )
+    docker_image: str | None = Field(
+        default=None,
+        description="Prebuilt Docker image to use; if unset, build from dockerfile_path"
+    )
+    docker_platform: str = Field(
+        default="linux/amd64",
+        description="Target platform for Docker build/run (e.g., linux/amd64 or linux/arm64)"
+    )
+    docker_build_args: dict[str, str] = Field(
+        default_factory=dict,
+        description="Additional --build-arg values for docker build"
+    )
 
 
 class BenchmarkParams(BaseModel):
@@ -48,6 +69,7 @@ class SlurmConfig(BaseModel):
     template: str = Field(default="slurm_job.sh.j2", description="Template file for Slurm script")
     account: str | None = Field(None, description="Slurm account to charge")
     qos: str | None = Field(None, description="Quality of Service")
+    reservation: str | None = Field(None, description="Slurm reservation name to use")
     additional_flags: dict[str, str] = Field(
         default_factory=dict,
         description="Additional Slurm flags"
@@ -98,4 +120,4 @@ class ProjectConfig(BaseModel):
     report_formats: list[str] = Field(
         default=["markdown"],
         description="Output report formats (markdown, json, html). Can specify multiple formats."
-    ) 
+    )

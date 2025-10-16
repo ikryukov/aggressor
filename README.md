@@ -136,6 +136,27 @@ report_formats:
   - "html"
 ```
 
+### Dockerized UCC Build
+
+When your build node OS differs from the cluster nodes (e.g., RHEL build node, Ubuntu22.04 cluster), enable Docker builds so UCC is compiled in an Ubuntu 22.04 + CUDA + HPC-X container. Set these fields under `build:` in your YAML:
+
+```yaml
+build:
+  source_dir: "/path/to/source"
+  build_dir: "/path/to/build"
+  install_dir: "/shared/path/ucc_install"  # shared across cluster nodes
+  use_docker: true
+  dockerfile_path: ".devcontainer/Dockerfile"
+  docker_platform: "linux/amd64"  # or "linux/arm64"
+  configure_flags:
+    - "--with-ucx=$HPCX_UCX_DIR"
+    - "--with-mpi=$HPCX_MPI_DIR"
+```
+
+- The provided `.devcontainer/Dockerfile` installs HPC-X and sets `hpcx_load`.
+- Artifacts are installed into `install_dir/<commit>`, usable by your benchmarks unchanged.
+- To build both arches, run the analysis twice with different `docker_platform` values.
+
 ## Usage
 
 Run the performance analysis:

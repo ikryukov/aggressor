@@ -8,6 +8,9 @@
 #SBATCH --exclusive
 #SBATCH --output={{ output_dir }}/{{ job_name }}-%j.log
 #SBATCH --job-name={{ job_name }}
+{% if reservation %}
+#SBATCH --reservation={{ reservation }}
+{% endif %}
 
 . /global/exafs/groups/gh/bootstrap-env.sh
 module purge

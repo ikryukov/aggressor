@@ -32,9 +32,9 @@ class BenchmarkResult:
 
 class MPICommandGenerator(Protocol):
     """Protocol for MPI command generators."""
-    
+
     def __call__(
-        self, 
+        self,
         benchmark_cmd: str,
         num_processes: int,
         procs_per_node: int,
@@ -42,14 +42,14 @@ class MPICommandGenerator(Protocol):
         build_dir: Path
     ) -> str:
         """Generate MPI command.
-        
+
         Args:
             benchmark_cmd: Command to run
             num_processes: Total number of processes
             procs_per_node: Processes per node
             memory_type: Memory type to use
             build_dir: Directory containing built binaries
-            
+
         Returns:
             Complete MPI command as a string
         """
@@ -73,7 +73,7 @@ class BenchmarkRunner:
         """
         self.install_dir = install_dir
         self.env = Environment(loader=FileSystemLoader(Path(__file__).parent / "templates"))
-        
+
         # Register command generators for different benchmark types
         self._command_generators: dict[BenchmarkType, MPICommandGenerator] = {
             BenchmarkType.UCC_PERFTEST: self._generate_ucc_perftest_command,
@@ -82,10 +82,10 @@ class BenchmarkRunner:
 
     def _detect_benchmark_type(self, benchmark_cmd: str) -> BenchmarkType:
         """Detect benchmark type based on command string.
-        
+
         Args:
             benchmark_cmd: Benchmark command to analyze
-            
+
         Returns:
             Detected benchmark type
         """
@@ -135,7 +135,7 @@ class BenchmarkRunner:
         """
         benchmark_type = self._detect_benchmark_type(benchmark_cmd)
         generator = self._command_generators[benchmark_type]
-        
+
         if benchmark_type == BenchmarkType.OSU:
             return generator(benchmark_cmd, num_processes, procs_per_node, memory_type, self.install_dir, bench_dir, mpi_args)
         else:
@@ -152,7 +152,7 @@ class BenchmarkRunner:
         mpi_args: str
     ) -> str:
         """Generate MPI command specifically for UCC perftest.
-        
+
         Args:
             benchmark_cmd: UCC perftest command to run
             num_processes: Total number of processes
@@ -160,24 +160,24 @@ class BenchmarkRunner:
             memory_type: Memory type to use
             build_dir: Directory containing built binaries
             bench_dir: Optional directory containing benchmark binaries
-            
+
         Returns:
             Complete MPI command for UCC perftest
         """
         # Use bench_dir if provided, otherwise fall back to build_dir
         target_dir = bench_dir if bench_dir else build_dir
-        
+
         num_nodes = (num_processes + procs_per_node - 1) // procs_per_node
-        
+
         mpi_cmd = [
             "mpirun",
             "-np", str(num_processes),
-            "-x", f"LD_LIBRARY_PATH={target_dir}/lib:$LD_LIBRARY_PATH"
+            # "-x", f"LD_LIBRARY_PATH={target_dir}/lib:$LD_LIBRARY_PATH"
         ]
 
         # UCC-specific flags
         mpi_cmd.extend([
-            "--mca", "coll", "^hcoll", 
+            "--mca", "coll", "^hcoll",
             "--mca", "coll_ucc_enable", "0"
         ])
 
@@ -186,7 +186,7 @@ class BenchmarkRunner:
         # Memory type specific flags for UCC
         if memory_type == MemoryType.CUDA:
             mpi_cmd.extend(["-x", "UCC_TLS=cuda,ucp"])
-            
+
         elif memory_type == MemoryType.ROCM:
             mpi_cmd.extend(["-x", "UCC_TLS=rocm,ucp"])
 
@@ -194,8 +194,8 @@ class BenchmarkRunner:
 
         if memory_type == MemoryType.CUDA:
             mpi_cmd.extend(["-m", "cuda"])
-        
-        # mpi_cmd.extend(["-n", "10000"]) 
+
+        # mpi_cmd.extend(["-n", "10000"])
 
         return " ".join(mpi_cmd)
 
@@ -218,22 +218,22 @@ class BenchmarkRunner:
             memory_type: Memory type to use
             install_dir: Directory containing installed binaries
             bench_dir: Directory containing benchmark binaries
-            
+
         Returns:
             Complete MPI command for OSU benchmark
         """
         map_type = "node"
-        
+
         mpi_cmd = [
             "mpirun",
             "-np", str(num_processes),
-            "-x", f"LD_LIBRARY_PATH={install_dir}/lib:$LD_LIBRARY_PATH",
+            # "-x", f"LD_LIBRARY_PATH={install_dir}/lib:$LD_LIBRARY_PATH",
             "--map-by", map_type
         ]
 
         mpi_cmd.extend(mpi_args.split())
         mpi_cmd.append(f"{bench_dir}/{benchmark_cmd}")
-        
+
         return " ".join(mpi_cmd)
 
     def _generate_slurm_script(
@@ -267,6 +267,7 @@ class BenchmarkRunner:
             procs_per_node=procs_per_node,
             output_dir=config.output_dir,
             job_name=config.job_name,
+            reservation=getattr(config, 'reservation', None),
             mpi_cmd=mpi_cmd
         )
 
@@ -329,7 +330,7 @@ class BenchmarkRunner:
                 )
                 stdout, stderr = await proc.communicate()
                 job_status = stdout.decode()
-                
+
                 if "JobState=COMPLETED" in job_status:
                     logger.info(f"Job {job_id} completed successfully")
                     break
@@ -337,7 +338,7 @@ class BenchmarkRunner:
                     error_state = next(state for state in ["FAILED", "CANCELLED", "TIMEOUT", "NODE_FAIL"] if state in job_status)
                     logger.error(f"Job {job_id} ended with state: {error_state}")
                     return "", f"Job failed with state: {error_state}", 1
-                    
+
                 logger.debug(f"Job {job_id} still running, waiting...")
                 await asyncio.sleep(10)
 
@@ -351,17 +352,17 @@ class BenchmarkRunner:
                     if output_path and output_path != "(null)":
                         output_file = Path(output_path)
                         break
-            
+
             if not output_file or not output_file.exists():
                 logger.warning(f"Could not find output file for job {job_id}, falling back to slurm-{job_id}.out")
                 output_file = Path(f"slurm-{job_id}.out")
-                
+
             if output_file.exists():
                 stdout = output_file.read_text()
             else:
                 logger.error(f"No output file found for job {job_id}")
                 stdout = ""
-                
+
             # Check for error file
             error_file = Path(f"slurm-{job_id}.err")
             if error_file.exists():
@@ -407,17 +408,17 @@ class BenchmarkRunner:
             bench_dir,
             config.mpi_args
         )
-                
+
         logger.info(f"MPI command: {mpi_cmd}")
 
         # Run benchmark
         if config.slurm:
             num_nodes = (num_processes + procs_per_node - 1) // procs_per_node
-            
+
             # Update slurm configuration job name with benchmark name
             if not hasattr(config.slurm, 'job_name') or not config.slurm.job_name:
                 config.slurm.job_name = f"{config.name}_{commit_hash}"
-                
+
             script = self._generate_slurm_script(
                 config.slurm,
                 mpi_cmd,
@@ -425,7 +426,7 @@ class BenchmarkRunner:
                 num_processes,
                 procs_per_node
             )
-            
+
             stdout, stderr, rc = await self._run_slurm(
                 script,
                 config.slurm.job_name
@@ -453,4 +454,4 @@ class BenchmarkRunner:
             timestamp=datetime.now(),
             stdout=stdout,
             stderr=stderr
-        ) 
+        )

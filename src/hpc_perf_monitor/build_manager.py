@@ -3,6 +3,7 @@
 import asyncio
 import logging
 import os
+import shlex
 from pathlib import Path
 
 from .config import BuildConfig
@@ -96,7 +97,7 @@ class BuildManager:
         logger.info(f"Install directory: {install_dir}")
         if build_dir.exists() and install_dir.exists():
             return build_dir, install_dir
-        
+
         if build_dir.exists():
             logger.info(f"Build directory already exists: {build_dir}")
         else:
@@ -110,6 +111,77 @@ class BuildManager:
             logger.info(f"Created build directory: {build_dir}")
 
         try:
+            # If configured, perform the build inside a Docker container
+            if self.config.use_docker:
+                logger.info("Docker build enabled. Building inside container environment.")
+
+                # Ensure host build and install directories exist
+                if not build_dir.exists():
+                    build_dir.mkdir(parents=True, exist_ok=True)
+                if not install_dir.exists():
+                    install_dir.mkdir(parents=True, exist_ok=True)
+
+                # Determine image to use or build
+                image_tag = self.config.docker_image
+                if image_tag is None:
+                    # Build image from Dockerfile
+                    repo_root = Path(__file__).resolve().parents[2]
+                    image_tag = f"ucc-build-env:{self.config.docker_platform.replace('/', '-')}"
+                    build_args = " ".join(
+                        [f"--build-arg {shlex.quote(k)}={shlex.quote(v)}" for k, v in self.config.docker_build_args.items()]
+                    )
+                    docker_build_cmd = (
+                        f"docker buildx build --platform {shlex.quote(self.config.docker_platform)} "
+                        f"-t {shlex.quote(image_tag)} -f {shlex.quote(str(self.config.dockerfile_path))} "
+                        f"{build_args} --load {shlex.quote(str(repo_root))}"
+                    )
+                    logger.info("Building Docker image for UCC build environment")
+                    await self._run_command(docker_build_cmd, cwd=repo_root)
+
+                # Prepare environment variable pass-throughs
+                env_flags = " ".join(
+                    [f"-e {shlex.quote(k)}={shlex.quote(v)}" for k, v in self.config.env_vars.items()]
+                )
+
+                # Configure and make flags (allow env var expansion like $HPCX_UCX_DIR)
+                configure_flags = " ".join(flag for flag in self.config.configure_flags)
+                make_flags = " ".join(flag for flag in self.config.make_flags if flag)
+
+                # Build script executed inside container
+                inner_script_lines = [
+                    "set -eo pipefail",
+                    "set +u",
+                    "source /opt/hpcx/hpcx-init.sh && hpcx_load",
+                    # Provide sane defaults if HPC-X doesn't export these variables
+                    "export HPCX_DIR=${HPCX_DIR:-/opt/hpcx}",
+                    "export HPCX_UCX_DIR=${HPCX_UCX_DIR:-$HPCX_DIR/ucx}",
+                    "export HPCX_MPI_DIR=${HPCX_MPI_DIR:-$HPCX_DIR/ompi}",
+                    "set -u",
+                    "mkdir -p /workspace/build /workspace/install",
+                    # Run autogen in the source tree (it writes to source)
+                    "if [ -x /workspace/src/autogen.sh ]; then (cd /workspace/src && ./autogen.sh); fi",
+                    "cd /workspace/build",
+                    f"/workspace/src/configure --prefix=/workspace/install {configure_flags}",
+                    f"make -j$(nproc) {make_flags}".rstrip(),
+                    "make install",
+                ]
+                inner_script = "; ".join(inner_script_lines)
+
+                docker_run_cmd = (
+                    f"docker run --rm --platform {shlex.quote(self.config.docker_platform)} "
+                    f"--user $(id -u):$(id -g) "
+                    f"-v {shlex.quote(str(source_dir))}:/workspace/src "
+                    f"-v {shlex.quote(str(build_dir))}:/workspace/build "
+                    f"-v {shlex.quote(str(install_dir))}:/workspace/install "
+                    f"{env_flags} "
+                    f"{shlex.quote(image_tag)} bash -lc {shlex.quote(inner_script)}"
+                )
+
+                await self._run_command(docker_run_cmd, cwd=build_dir)
+
+                logger.info(f"Docker build completed successfully for commit {commit_hash}")
+                return build_dir, install_dir
+
             # Run autogen if present
             if (source_dir / "autogen.sh").exists():
                 logger.info("Running autogen.sh")
@@ -187,4 +259,4 @@ class BuildManager:
         """Clean up build directories."""
         if self.config.build_dir.exists():
             logger.info(f"Cleaning up build directory: {self.config.build_dir}")
-            # shutil.rmtree(self.config.build_dir, ignore_errors=True) 
+            # shutil.rmtree(self.config.build_dir, ignore_errors=True)

@@ -8,6 +8,9 @@
 #SBATCH --exclusive
 #SBATCH --output={{ output_dir }}/{{ job_name }}-%j.log
 #SBATCH --job-name={{ job_name }}
+{% if reservation %}
+#SBATCH --reservation={{ reservation }}
+{% endif %}
 
 module use /hpc/local/etc/modulefiles/
 module load hpcx-ga-gcc dev/cuda-latest
